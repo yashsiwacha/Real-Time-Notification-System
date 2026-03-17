@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification System Demo</title>
+    <style>
+        :root {
+            --bg: #f5f6f8;
+            --card: #ffffff;
+            --ink: #0f172a;
+            --accent: #006d77;
+            --accent-2: #ffb703;
+            --line: #d0d7de;
+            --ok: #167f39;
+            --err: #9f1239;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+            background: radial-gradient(circle at top right, #e6f4f1 0%, var(--bg) 45%);
+            color: var(--ink);
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 24px auto;
+            padding: 0 16px;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 26px;
+        }
+
+        p {
+            margin: 0;
+            color: #334155;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #475569;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        textarea {
+            min-height: 84px;
+            resize: vertical;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.12s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        .primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .warning {
+            background: var(--accent-2);
+            color: #3f2a00;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .ok { color: var(--ok); }
+        .err { color: var(--err); }
+
+        .feed {
+            max-height: 320px;
+            overflow: auto;
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 12px;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .feed-line { margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="panel">
+        <h1>Real-Time Notification Demo</h1>
+        <p>Connect as a user, publish test notifications, and watch live events arrive through WebSocket.</p>
+    </div>
+
+    <div class="panel">
+        <div class="row">
+            <div>
+                <label for="apiKey">API Key</label>
+                <input id="apiKey" value="change-me-in-prod" />
+            </div>
+            <div>
+                <label for="userId">User ID</label>
+                <input id="userId" value="user-42" />
+            </div>
+            <div>
+                <label for="idempotencyKey">Idempotency Key</label>
+                <input id="idempotencyKey" value="demo-order-42-1" />
+            </div>
+        </div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="autoKey" checked style="width:auto;">
+            <label for="autoKey" style="margin:0;">Auto-generate idempotency key on each send</label>
+        </div>
+        <div class="actions">
+            <button class="primary" id="connectBtn">Connect WebSocket</button>
+            <button class="secondary" id="disconnectBtn">Disconnect</button>
+            <button class="warning" id="statsBtn">Fetch Stats</button>
+        </div>
+        <div id="socketStatus" class="status">WebSocket: disconnected</div>
+    </div>
+
+    <div class="panel">
+        <div class="row">
+            <div>
+                <label for="eventType">Event Type</label>
+                <input id="eventType" value="ORDER_STATUS" />
+            </div>
+            <div>
+                <label for="message">Message</label>
+                <input id="message" value="Your order is out for delivery" />
+            </div>
+        </div>
+        <div style="margin-top:12px;">
+            <label for="metadata">Metadata JSON</label>
+            <textarea id="metadata">{"orderId":"8843","etaMinutes":"18"}</textarea>
+        </div>
+        <div class="actions">
+            <button class="primary" id="sendBtn">Send Notification</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3 style="margin-top:0;">Live Feed</h3>
+        <div id="feed" class="feed"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+<script>
+    let stompClient = null;
+    let connectedUserId = null;
+
+    const feed = document.getElementById("feed");
+    const socketStatus = document.getElementById("socketStatus");
+
+    function addFeed(message, kind = "info") {
+        const line = document.createElement("div");
+        line.className = "feed-line";
+        const timestamp = new Date().toLocaleTimeString();
+        line.textContent = `[${timestamp}] ${message}`;
+        if (kind === "error") {
+            line.style.color = "#fca5a5";
+        } else if (kind === "success") {
+            line.style.color = "#86efac";
+        }
+        feed.prepend(line);
+    }
+
+    function setSocketStatus(text, isOk) {
+        socketStatus.textContent = text;
+        socketStatus.className = "status " + (isOk ? "ok" : "err");
+    }
+
+    function userIdValue() {
+        return document.getElementById("userId").value.trim();
+    }
+
+    function apiKeyValue() {
+        return document.getElementById("apiKey").value.trim();
+    }
+
+    document.getElementById("connectBtn").addEventListener("click", () => {
+        const userId = userIdValue();
+        if (!userId) {
+            addFeed("User ID is required before connecting", "error");
+            return;
+        }
+
+        if (stompClient && stompClient.active) {
+            if (connectedUserId === userId) {
+                addFeed("WebSocket already connected", "info");
+                return;
+            }
+
+            addFeed(`Switching WebSocket user from ${connectedUserId || "unknown"} to ${userId}`, "info");
+            stompClient.deactivate().then(() => connectForUser(userId));
+            return;
+        }
+
+        connectForUser(userId);
+    });
+
+    function connectForUser(userId) {
+        const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const brokerURL = `${wsProtocol}://${window.location.host}/ws?userId=${encodeURIComponent(userId)}`;
+
+        stompClient = new StompJs.Client({
+            brokerURL,
+            reconnectDelay: 3000,
+            onConnect: () => {
+                connectedUserId = userId;
+                setSocketStatus(`WebSocket: connected as ${userId}`, true);
+                addFeed(`Connected to ${brokerURL}`, "success");
+                stompClient.subscribe("/user/queue/notifications", (frame) => {
+                    addFeed(`Notification received -> ${frame.body}`, "success");
+                });
+            },
+            onStompError: (frame) => {
+                addFeed(`Broker error: ${frame.headers.message}`, "error");
+            },
+            onWebSocketClose: () => {
+                connectedUserId = null;
+                setSocketStatus("WebSocket: disconnected", false);
+                addFeed("WebSocket closed", "error");
+            }
+        });
+
+        stompClient.activate();
+    }
+
+    document.getElementById("disconnectBtn").addEventListener("click", async () => {
+        if (stompClient && stompClient.active) {
+            await stompClient.deactivate();
+            setSocketStatus("WebSocket: disconnected", false);
+            addFeed("Disconnected by user", "info");
+        }
+    });
+
+    document.getElementById("sendBtn").addEventListener("click", async () => {
+        const userId = userIdValue();
+        const apiKey = apiKeyValue();
+
+        if (!userId || !apiKey) {
+            addFeed("User ID and API Key are required", "error");
+            return;
+        }
+
+        let metadata = {};
+        try {
+            metadata = JSON.parse(document.getElementById("metadata").value || "{}");
+        } catch (error) {
+            addFeed("Metadata JSON is invalid", "error");
+            return;
+        }
+
+        const payload = {
+            userId,
+            type: document.getElementById("eventType").value.trim() || "ORDER_STATUS",
+            message: document.getElementById("message").value.trim() || "Notification",
+            idempotencyKey: document.getElementById("idempotencyKey").value.trim(),
+            metadata
+        };
+
+        const autoKeyEnabled = document.getElementById("autoKey").checked;
+        if (autoKeyEnabled) {
+            payload.idempotencyKey = `demo-${userId}-${Date.now()}`;
+            document.getElementById("idempotencyKey").value = payload.idempotencyKey;
+        }
+
+        try {
+            const response = await fetch("/api/notifications", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-API-KEY": apiKey
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            addFeed(`POST /api/notifications -> ${response.status} ${JSON.stringify(data)}`, response.ok ? "success" : "error");
+        } catch (error) {
+            addFeed(`Request failed: ${error.message}`, "error");
+        }
+    });
+
+    document.getElementById("statsBtn").addEventListener("click", async () => {
+        const apiKey = apiKeyValue();
+        if (!apiKey) {
+            addFeed("API key required for stats", "error");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/notifications/system-stats", {
+                method: "GET",
+                headers: { "X-API-KEY": apiKey }
+            });
+            const data = await response.json();
+            addFeed(`GET /api/notifications/system-stats -> ${response.status} ${JSON.stringify(data)}`, response.ok ? "success" : "error");
+        } catch (error) {
+            addFeed(`Stats fetch failed: ${error.message}`, "error");
+        }
+    });
+
+    setSocketStatus("WebSocket: disconnected", false);
+    addFeed("Demo ready. Connect WebSocket first, then send notification.");
+</script>
+</body>
+</html>

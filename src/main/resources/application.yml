@@ -1,0 +1,47 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/notifications;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+notification:
+  queue:
+    key-prefix: notification
+  dispatcher:
+    poll-size: 50
+    max-attempts: 5
+    base-backoff-ms: 500
+    recovery-batch-size: 500
+  rate-limit:
+    capacity: 10
+    refill-per-second: 5
+
+app:
+  security:
+    api-key: ${API_KEY:}
+    require-api-key: false
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:8080,http://127.0.0.1:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  pattern:
+    level: "%5p [requestId=%X{requestId}]"

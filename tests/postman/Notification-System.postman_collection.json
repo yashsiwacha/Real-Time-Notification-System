@@ -1,0 +1,177 @@
+{
+  "info": {
+    "name": "Notification System API",
+    "description": "End-to-end API checks for realtime notification service.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Public - Root",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            ""
+          ]
+        }
+      }
+    },
+    {
+      "name": "Public - Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/actuator/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "actuator",
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Secured - Create Notification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"type\": \"ORDER_STATUS\",\n  \"message\": \"Your order is out for delivery\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\",\n  \"metadata\": {\n    \"orderId\": \"8843\",\n    \"etaMinutes\": \"18\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notifications"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Secured - Duplicate Notification Check",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"type\": \"ORDER_STATUS\",\n  \"message\": \"Your order is out for delivery\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\",\n  \"metadata\": {\n    \"orderId\": \"8843\",\n    \"etaMinutes\": \"18\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notifications"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Secured - System Stats",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications/system-stats",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notifications",
+            "system-stats"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Secured - Rate Limit Probe (Manual Repeat)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-API-KEY",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"type\": \"ORDER_STATUS\",\n  \"message\": \"High traffic simulation\",\n  \"idempotencyKey\": \"{{rateLimitKey}}\",\n  \"metadata\": {\n    \"scenario\": \"rate-limit\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notifications"
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "apiKey",
+      "value": "change-me-in-prod"
+    },
+    {
+      "key": "userId",
+      "value": "user-42"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "demo-order-8843-key-1"
+    },
+    {
+      "key": "rateLimitKey",
+      "value": "rate-limit-key-1"
+    }
+  ]
+}
