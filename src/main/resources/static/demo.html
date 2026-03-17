@@ -4,195 +4,414 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notification System Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f5f6f8;
-            --card: #ffffff;
-            --ink: #0f172a;
-            --accent: #006d77;
-            --accent-2: #ffb703;
-            --line: #d0d7de;
-            --ok: #167f39;
-            --err: #9f1239;
+            --bg-ink: #0b1b2a;
+            --bg-deep: #102437;
+            --card: rgba(255, 255, 255, 0.9);
+            --line: rgba(9, 30, 46, 0.15);
+            --ink: #112033;
+            --muted: #48607a;
+            --accent: #0e9384;
+            --accent-2: #f59e0b;
+            --ok: #1f9d5b;
+            --err: #c0364d;
+            --glow: rgba(14, 147, 132, 0.22);
         }
 
         body {
             margin: 0;
-            font-family: "Segoe UI", "Helvetica Neue", sans-serif;
-            background: radial-gradient(circle at top right, #e6f4f1 0%, var(--bg) 45%);
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(1200px 500px at 5% -10%, #255b6e 0%, transparent 65%),
+                radial-gradient(900px 500px at 100% 0%, #1d7e7a 0%, transparent 72%),
+                linear-gradient(135deg, var(--bg-ink) 0%, var(--bg-deep) 100%);
             color: var(--ink);
+            min-height: 100vh;
         }
 
         .container {
-            max-width: 980px;
-            margin: 24px auto;
-            padding: 0 16px;
+            max-width: 1180px;
+            margin: 20px auto 28px;
+            padding: 0 18px;
+            position: relative;
+        }
+
+        .decor {
+            pointer-events: none;
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(26px);
+            opacity: 0.45;
+        }
+
+        .decor.one {
+            width: 200px;
+            height: 200px;
+            background: #11b29f;
+            top: -30px;
+            left: -20px;
+            animation: floaty 7s ease-in-out infinite;
+        }
+
+        .decor.two {
+            width: 150px;
+            height: 150px;
+            background: #ffca69;
+            right: 0;
+            top: 48px;
+            animation: floaty 6.3s ease-in-out infinite reverse;
+        }
+
+        .hero,
+        .panel,
+        .feed-panel {
+            background: var(--card);
+            border: 1px solid var(--line);
+            backdrop-filter: blur(8px);
+            border-radius: 18px;
+            box-shadow: 0 18px 42px rgba(3, 15, 27, 0.22);
+            animation: fadeSlideIn .42s ease both;
+        }
+
+        .hero {
+            padding: 22px;
+            margin-bottom: 14px;
+        }
+
+        .hero h1 {
+            margin: 0 0 6px;
+            font-size: clamp(24px, 3vw, 36px);
+            letter-spacing: 0.2px;
+        }
+
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+            max-width: 860px;
+        }
+
+        .hero-badges {
+            margin-top: 14px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: #dff4f2;
+            color: #0e5256;
+            border: 1px solid #bfe7e2;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: minmax(420px, 1fr) minmax(320px, 0.95fr);
+            gap: 14px;
         }
 
         .panel {
-            background: var(--card);
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            padding: 18px;
-            box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
-            margin-bottom: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
         }
 
-        h1 {
-            margin: 0 0 8px;
-            font-size: 26px;
+        h2 {
+            margin: 0 0 12px;
+            font-size: 18px;
+            color: #1a2b3d;
         }
 
-        p {
-            margin: 0;
-            color: #334155;
+        h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
         }
 
         .row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 12px;
-            margin-top: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 10px;
         }
 
         label {
             display: block;
             font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: #475569;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #34506a;
+            letter-spacing: 0.2px;
         }
 
         input, textarea {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--line);
-            border-radius: 10px;
+            padding: 10px 11px;
+            border: 1px solid #c0d1de;
+            border-radius: 11px;
             box-sizing: border-box;
             font-size: 14px;
+            transition: box-shadow .2s ease, border-color .2s ease;
+            font-family: "Space Grotesk", sans-serif;
+            background: #fdfefe;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #0e9384;
+            box-shadow: 0 0 0 3px var(--glow);
         }
 
         textarea {
-            min-height: 84px;
+            min-height: 96px;
             resize: vertical;
         }
 
         .actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 14px;
+            gap: 9px;
+            margin-top: 12px;
         }
 
         button {
             border: 0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-weight: 600;
+            border-radius: 11px;
+            padding: 10px 13px;
+            font-weight: 700;
             cursor: pointer;
-            transition: transform 0.12s ease;
+            transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
+            font-family: "Space Grotesk", sans-serif;
         }
 
         button:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
 
         .primary {
             background: var(--accent);
             color: #fff;
+            box-shadow: 0 10px 20px rgba(14, 147, 132, 0.28);
         }
 
         .secondary {
-            background: #e2e8f0;
-            color: #1e293b;
+            background: #e5eef5;
+            color: #19374f;
         }
 
         .warning {
             background: var(--accent-2);
-            color: #3f2a00;
+            color: #3e2900;
         }
 
-        .status {
+        .status-pill {
             margin-top: 10px;
-            font-weight: 600;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            border: 1px solid #d2dde7;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: #f7fafc;
         }
 
-        .ok { color: var(--ok); }
-        .err { color: var(--err); }
+        .status-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--err);
+            box-shadow: 0 0 0 4px rgba(192, 54, 77, 0.15);
+            transition: background .2s ease;
+        }
+
+        .status-pill.ok {
+            color: var(--ok);
+            background: #f2fcf7;
+            border-color: #bee6cd;
+        }
+
+        .status-pill.ok .status-dot {
+            background: var(--ok);
+            box-shadow: 0 0 0 4px rgba(31, 157, 91, 0.15);
+        }
+
+        .status-pill.err {
+            color: var(--err);
+            background: #fff5f6;
+            border-color: #f2c2cc;
+        }
+
+        .mini-note {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .feed-panel {
+            padding: 16px;
+            min-height: 650px;
+            display: flex;
+            flex-direction: column;
+            animation-delay: .08s;
+        }
+
+        .feed-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .feed-header code {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 1px solid #c5d3de;
+            background: #f4f8fb;
+            color: #26455f;
+            font-family: "IBM Plex Mono", monospace;
+        }
 
         .feed {
-            max-height: 320px;
+            flex: 1;
             overflow: auto;
-            background: #0f172a;
+            background: linear-gradient(160deg, #0a1421 0%, #111f2f 100%);
             color: #e2e8f0;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 12px;
-            font-family: Consolas, monospace;
+            font-family: "IBM Plex Mono", Consolas, monospace;
             font-size: 12px;
             line-height: 1.5;
+            border: 1px solid rgba(103, 152, 197, 0.24);
         }
 
-        .feed-line { margin-bottom: 6px; }
+        .feed-line {
+            margin-bottom: 7px;
+            padding-bottom: 7px;
+            border-bottom: 1px dashed rgba(184, 211, 236, 0.14);
+            word-break: break-word;
+        }
+
+        .feed-line:last-child {
+            border-bottom: 0;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes floaty {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(8px) scale(1.03); }
+        }
+
+        @media (max-width: 980px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feed-panel {
+                min-height: 380px;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel">
+    <div class="decor one"></div>
+    <div class="decor two"></div>
+
+    <div class="hero">
         <h1>Real-Time Notification Demo</h1>
         <p>Connect as a user, publish test notifications, and watch live events arrive through WebSocket.</p>
-    </div>
-
-    <div class="panel">
-        <div class="row">
-            <div>
-                <label for="apiKey">API Key</label>
-                <input id="apiKey" value="change-me-in-prod" />
-            </div>
-            <div>
-                <label for="userId">User ID</label>
-                <input id="userId" value="user-42" />
-            </div>
-            <div>
-                <label for="idempotencyKey">Idempotency Key</label>
-                <input id="idempotencyKey" value="demo-order-42-1" />
-            </div>
-        </div>
-        <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" id="autoKey" checked style="width:auto;">
-            <label for="autoKey" style="margin:0;">Auto-generate idempotency key on each send</label>
-        </div>
-        <div class="actions">
-            <button class="primary" id="connectBtn">Connect WebSocket</button>
-            <button class="secondary" id="disconnectBtn">Disconnect</button>
-            <button class="warning" id="statsBtn">Fetch Stats</button>
-        </div>
-        <div id="socketStatus" class="status">WebSocket: disconnected</div>
-    </div>
-
-    <div class="panel">
-        <div class="row">
-            <div>
-                <label for="eventType">Event Type</label>
-                <input id="eventType" value="ORDER_STATUS" />
-            </div>
-            <div>
-                <label for="message">Message</label>
-                <input id="message" value="Your order is out for delivery" />
-            </div>
-        </div>
-        <div style="margin-top:12px;">
-            <label for="metadata">Metadata JSON</label>
-            <textarea id="metadata">{"orderId":"8843","etaMinutes":"18"}</textarea>
-        </div>
-        <div class="actions">
-            <button class="primary" id="sendBtn">Send Notification</button>
+        <div class="hero-badges">
+            <span class="badge">WebSocket Live Stream</span>
+            <span class="badge">Idempotency Safe</span>
+            <span class="badge">Rate-Limit Aware</span>
         </div>
     </div>
 
-    <div class="panel">
-        <h3 style="margin-top:0;">Live Feed</h3>
-        <div id="feed" class="feed"></div>
+    <div class="main-grid">
+        <section>
+            <div class="panel">
+                <h2>Connection</h2>
+                <div class="row">
+                    <div>
+                        <label for="apiKey">API Key</label>
+                        <input id="apiKey" value="change-me-in-prod" />
+                    </div>
+                    <div>
+                        <label for="userId">User ID</label>
+                        <input id="userId" value="user-42" />
+                    </div>
+                    <div>
+                        <label for="idempotencyKey">Idempotency Key</label>
+                        <input id="idempotencyKey" value="demo-order-42-1" />
+                    </div>
+                </div>
+                <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="autoKey" checked style="width:auto;">
+                    <label for="autoKey" style="margin:0;">Auto-generate idempotency key on each send</label>
+                </div>
+                <div class="actions">
+                    <button class="primary" id="connectBtn">Connect WebSocket</button>
+                    <button class="secondary" id="disconnectBtn">Disconnect</button>
+                    <button class="warning" id="statsBtn">Fetch Stats</button>
+                </div>
+                <div id="socketStatus" class="status-pill err">
+                    <span class="status-dot"></span>
+                    <span>WebSocket: disconnected</span>
+                </div>
+                <div class="mini-note">Tip: if user id changes, connect will auto-switch your websocket session.</div>
+            </div>
+
+            <div class="panel">
+                <h2>Publish Event</h2>
+                <div class="row">
+                    <div>
+                        <label for="eventType">Event Type</label>
+                        <input id="eventType" value="ORDER_STATUS" />
+                    </div>
+                    <div>
+                        <label for="message">Message</label>
+                        <input id="message" value="Your order is out for delivery" />
+                    </div>
+                </div>
+                <div style="margin-top:12px;">
+                    <label for="metadata">Metadata JSON</label>
+                    <textarea id="metadata">{"orderId":"8843","etaMinutes":"18"}</textarea>
+                </div>
+                <div class="actions">
+                    <button class="primary" id="sendBtn">Send Notification</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="feed-panel">
+            <div class="feed-header">
+                <h3>Live Feed</h3>
+                <code>/user/queue/notifications</code>
+            </div>
+            <div id="feed" class="feed"></div>
+        </section>
     </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
@@ -209,16 +428,17 @@
         const timestamp = new Date().toLocaleTimeString();
         line.textContent = `[${timestamp}] ${message}`;
         if (kind === "error") {
-            line.style.color = "#fca5a5";
+            line.style.color = "#fda4af";
         } else if (kind === "success") {
-            line.style.color = "#86efac";
+            line.style.color = "#7ef0bc";
         }
         feed.prepend(line);
     }
 
     function setSocketStatus(text, isOk) {
-        socketStatus.textContent = text;
-        socketStatus.className = "status " + (isOk ? "ok" : "err");
+        socketStatus.className = "status-pill " + (isOk ? "ok" : "err");
+        const label = socketStatus.querySelector("span:last-child");
+        label.textContent = text;
     }
 
     function userIdValue() {
