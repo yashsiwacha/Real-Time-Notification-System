@@ -4,6 +4,12 @@ import { check, sleep } from 'k6';
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const ADMIN_USERNAME = __ENV.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'admin123';
+const LOGIN_EACH_ITERATION = (__ENV.LOGIN_EACH_ITERATION || 'false').toLowerCase() === 'true';
+const USE_SETUP_TOKEN = (__ENV.USE_SETUP_TOKEN || 'true').toLowerCase() === 'true';
+const TOKEN_REFRESH_ITERATIONS = Number(__ENV.TOKEN_REFRESH_ITERATIONS || '0');
+
+let cachedToken = null;
+let lastTokenIteration = -1;
 
 export const options = {
   stages: [
@@ -29,20 +35,59 @@ function loginAndGetToken() {
     headers: { 'Content-Type': 'application/json' }
   });
 
+  if (response.status !== 200) {
+    check(response, {
+      'login status 200': (r) => r.status === 200
+    });
+    return null;
+  }
+
+  let token = null;
+  try {
+    token = response.json('token');
+  } catch (e) {
+    token = null;
+  }
+
   const ok = check(response, {
     'login status 200': (r) => r.status === 200,
-    'token returned': (r) => !!r.json('token')
+    'token returned': () => !!token
   });
 
   if (!ok) {
     return null;
   }
 
-  return response.json('token');
+  return token;
 }
 
-export default function () {
-  const token = loginAndGetToken();
+function getToken() {
+  if (LOGIN_EACH_ITERATION) {
+    return loginAndGetToken();
+  }
+
+  const shouldRefresh =
+    !cachedToken ||
+    (TOKEN_REFRESH_ITERATIONS > 0 && __ITER - lastTokenIteration >= TOKEN_REFRESH_ITERATIONS);
+
+  if (shouldRefresh) {
+    cachedToken = loginAndGetToken();
+    lastTokenIteration = __ITER;
+  }
+
+  return cachedToken;
+}
+
+export function setup() {
+  if (LOGIN_EACH_ITERATION || !USE_SETUP_TOKEN) {
+    return { setupToken: null };
+  }
+
+  return { setupToken: loginAndGetToken() };
+}
+
+export default function (data) {
+  let token = data && data.setupToken ? data.setupToken : getToken();
   if (!token) {
     sleep(1);
     return;
@@ -66,6 +111,11 @@ export default function () {
       Authorization: `Bearer ${token}`
     }
   });
+
+  if (response.status === 401 && !LOGIN_EACH_ITERATION) {
+    cachedToken = loginAndGetToken();
+    token = cachedToken;
+  }
 
   check(response, {
     'publish status 202': (r) => r.status === 202
