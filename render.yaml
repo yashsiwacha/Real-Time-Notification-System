@@ -21,11 +21,11 @@ services:
           type: redis
           name: notification-redis
           property: port
-      - key: REDIS_PASSWORD
+      - key: REDIS_URL
         fromService:
           type: redis
           name: notification-redis
-          property: password
+          property: connectionString
       - key: REDIS_SSL_ENABLED
         value: false
       - key: API_KEY
