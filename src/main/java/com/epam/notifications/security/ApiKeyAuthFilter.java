@@ -47,6 +47,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         return path.equals("/")
                 || path.equals("/demo")
                 || path.equals("/demo.html")
+                || path.startsWith("/api/auth")
                 || path.startsWith("/api/session")
                 || path.equals("/favicon.ico")
                 || path.startsWith("/assets/")
@@ -60,6 +61,12 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         String method = request.getMethod();
         if (method != null && HttpMethod.OPTIONS.matches(method)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (SecurityContextHolder.getContext().getAuthentication() != null
+                && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -86,7 +93,11 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         }
 
         UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(validSessionCookie ? "ui-session-client" : "api-key-client", null, AuthorityUtils.NO_AUTHORITIES);
+            new UsernamePasswordAuthenticationToken(
+                validSessionCookie ? "ui-session-client" : "api-key-client",
+                null,
+                AuthorityUtils.createAuthorityList("ROLE_ADMIN")
+            );
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
         filterChain.doFilter(request, response);
     }

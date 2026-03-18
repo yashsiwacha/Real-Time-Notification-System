@@ -16,8 +16,27 @@ spring:
       password: ${REDIS_PASSWORD:}
       ssl:
         enabled: ${REDIS_SSL_ENABLED:false}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.epam.notifications.domain"
+        spring.json.value.default.type: "com.epam.notifications.domain.NotificationMessage"
 
 notification:
+  kafka:
+    enabled: ${KAFKA_ENABLED:false}
+    topic: ${KAFKA_TOPIC:notifications.created}
+    group-id: ${KAFKA_GROUP_ID:notification-dispatcher}
+    delivery-attempts: ${KAFKA_DELIVERY_ATTEMPTS:8}
+    retry-delay-ms: ${KAFKA_RETRY_DELAY_MS:300}
+    retry-multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
+    retry-max-delay-ms: ${KAFKA_RETRY_MAX_DELAY_MS:30000}
   dispatcher:
     poll-size: 200
     max-attempts: 8
@@ -28,3 +47,17 @@ app:
     api-key: ${API_KEY:}
     require-api-key: true
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:8080}
+    jwt-secret: ${JWT_SECRET:dev-notification-jwt-secret-dev-notification-jwt-secret}
+    jwt-expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
+    admin:
+      username: ${ADMIN_USERNAME:admin}
+      password: ${ADMIN_PASSWORD:admin123}
+    user:
+      username: ${USER_USERNAME:user}
+      password: ${USER_PASSWORD:user123}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus

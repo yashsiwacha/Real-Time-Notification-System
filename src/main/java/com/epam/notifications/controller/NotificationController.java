@@ -4,10 +4,12 @@ import com.epam.notifications.domain.NotificationRequest;
 import com.epam.notifications.domain.NotificationStatusResponse;
 import com.epam.notifications.infra.TokenBucketRateLimiter;
 import com.epam.notifications.service.ConnectedUserRegistry;
+import com.epam.notifications.service.NotificationPipelineMetrics;
 import com.epam.notifications.service.NotificationPersistenceService;
 import com.epam.notifications.service.NotificationProducerService;
 import com.epam.notifications.service.NotificationQueueService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,17 +29,23 @@ public class NotificationController {
     private final NotificationPersistenceService notificationPersistenceService;
     private final ConnectedUserRegistry connectedUserRegistry;
     private final TokenBucketRateLimiter tokenBucketRateLimiter;
+    private final NotificationPipelineMetrics notificationPipelineMetrics;
+    private final boolean kafkaEnabled;
 
     public NotificationController(NotificationProducerService notificationProducerService,
                                   NotificationQueueService notificationQueueService,
                                   NotificationPersistenceService notificationPersistenceService,
                                   ConnectedUserRegistry connectedUserRegistry,
-                                  TokenBucketRateLimiter tokenBucketRateLimiter) {
+                                  TokenBucketRateLimiter tokenBucketRateLimiter,
+                                  NotificationPipelineMetrics notificationPipelineMetrics,
+                                  @Value("${notification.kafka.enabled:false}") boolean kafkaEnabled) {
         this.notificationProducerService = notificationProducerService;
         this.notificationQueueService = notificationQueueService;
         this.notificationPersistenceService = notificationPersistenceService;
         this.connectedUserRegistry = connectedUserRegistry;
         this.tokenBucketRateLimiter = tokenBucketRateLimiter;
+        this.notificationPipelineMetrics = notificationPipelineMetrics;
+        this.kafkaEnabled = kafkaEnabled;
     }
 
     @PostMapping
@@ -60,8 +68,12 @@ public class NotificationController {
 
     @GetMapping("/system-stats")
     public Map<String, Integer> systemStats() {
+        int pending = kafkaEnabled
+            ? notificationPipelineMetrics.pendingApprox()
+            : notificationQueueService.pendingCount();
+
         return Map.of(
-                "pendingQueue", notificationQueueService.pendingCount(),
+            "pendingQueue", pending,
                 "deadLetter", Math.toIntExact(notificationPersistenceService.deadLetterCount()),
                 "delivered", Math.toIntExact(notificationPersistenceService.deliveredCount()),
                 "connectedUsers", connectedUserRegistry.connectedCount()

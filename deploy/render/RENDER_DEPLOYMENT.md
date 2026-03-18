@@ -34,7 +34,8 @@ jdbc:postgresql://ep-xxxxxxx-pooler.us-east-2.aws.neon.tech/neondb?sslmode=requi
 6. Click `Apply`
 7. Open the `notification-system` service -> `Environment`
 8. Set `DB_URL` to your Neon JDBC URL
-9. Save changes and redeploy
+9. Set `KAFKA_ENABLED=false` (current Render blueprint provisions Redis + Postgres only)
+10. Save changes and redeploy
 
 ## 4) Wait for initial build
 

@@ -19,8 +19,10 @@ public class HomeController {
                         "info", "/actuator/info"
                 ),
                 "securedEndpoints", Map.of(
-                        "createNotification", "POST /api/notifications (requires X-API-KEY)",
-                        "stats", "GET /api/notifications/system-stats (requires X-API-KEY)"
+                        "createNotification", "POST /api/notifications (requires ROLE_ADMIN via JWT, API key, or session)",
+                        "stats", "GET /api/notifications/system-stats (requires ROLE_ADMIN or ROLE_USER via JWT, or session)",
+                        "authLogin", "POST /api/auth/login (returns JWT)",
+                        "sessionLogin", "POST /api/session/login (one-time API key for cookie session)"
                 )
         );
     }

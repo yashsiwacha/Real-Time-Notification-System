@@ -1,4 +1,26 @@
 services:
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: notification-zookeeper
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: notification-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+
   postgres:
     image: postgres:16
     container_name: notification-postgres
@@ -26,6 +48,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/notifications
@@ -33,10 +57,40 @@ services:
       DB_PASSWORD: notifications
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      KAFKA_ENABLED: true
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       API_KEY: change-me-in-prod
+      JWT_SECRET: change-this-jwt-secret-at-least-32-characters
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+      USER_USERNAME: user
+      USER_PASSWORD: user123
       ALLOWED_ORIGINS: http://localhost:8080
     ports:
       - "8080:8080"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: notification-prometheus
+    depends_on:
+      - app
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: notification-grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
 
 volumes:
   pgdata:

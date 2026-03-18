@@ -9,6 +9,8 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      - key: KAFKA_ENABLED
+        value: "false"
       - key: DB_URL
         sync: false
       - key: REDIS_HOST

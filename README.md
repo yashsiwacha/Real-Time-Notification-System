@@ -5,18 +5,21 @@ This service implements Swiggy and Zomato style notification delivery with relia
 ## Production Features
 
 - Real-time WebSocket delivery using STOMP and user-specific destinations
-- API key security for REST endpoints
+- JWT authentication with role-based access control (ADMIN and USER)
+- API key and login-once cookie session support for operator console
 - Token-bucket rate limiting per user
 - Idempotency protection to prevent duplicate notification creation
 - Retry with exponential backoff and dead-letter transition
 - Persistent delivery state in PostgreSQL via Spring Data JPA
-- Redis-backed distributed queue scheduling (sorted set)
+- Kafka-based event pipeline (producer -> topic -> consumer)
+- Redis-backed queue fallback mode for environments without Kafka
 - Redis-backed distributed presence registry for WebSocket users
 - Redis-backed distributed token-bucket limiter via Lua script
 - Flyway migrations for schema versioning
 - Crash recovery loader that restores pending notifications from DB at startup
 - Request correlation IDs through X-Request-Id for traceability
-- Health and metrics endpoints via Spring Boot Actuator
+- Prometheus metrics endpoint and Grafana dashboard integration
+- k6 load-test script with staged ramp to 10k virtual users
 
 ## Stack
 
@@ -25,17 +28,20 @@ This service implements Swiggy and Zomato style notification delivery with relia
 - Spring WebSocket
 - Spring Security
 - Spring Data JPA
+- Spring Kafka
 - Flyway
 - PostgreSQL (prod profile) and H2 (default local profile)
 - Redis
+- Prometheus and Grafana
+- k6 (for load testing)
 
 ## Delivery Lifecycle
 
 1. Client sends POST /api/notifications with X-API-KEY.
 2. Service enforces rate limit and checks idempotency key.
 3. Notification is persisted with ENQUEUED state.
-4. Event is published to internal topic bus and queued.
-5. Scheduler attempts WebSocket delivery to /user/queue/notifications.
+4. Event is published to Kafka topic notifications.created.
+5. Kafka consumer attempts WebSocket delivery to /user/queue/notifications.
 6. On failure, state moves to RETRY_SCHEDULED with next attempt timestamp.
 7. On success, state becomes DELIVERED.
 8. If retries exceed configured maximum, state becomes DEAD_LETTER.
@@ -47,7 +53,8 @@ This service implements Swiggy and Zomato style notification delivery with relia
 
 2. Default local profile uses embedded H2 at data/notifications.
 
-3. Redis is required for queue, limiter, and presence features.
+3. Redis is required for limiter and presence features.
+4. Kafka mode can be enabled with KAFKA_ENABLED=true.
 
 ## Run Tests
 
@@ -63,6 +70,9 @@ This service implements Swiggy and Zomato style notification delivery with relia
 - app on 8080
 - postgres on 5432
 - redis on 6379
+- kafka on 9092
+- prometheus on 9090
+- grafana on 3000
 
 ## CI/CD (GitHub Actions)
 
@@ -91,8 +101,11 @@ Notes:
 
 ## API Security
 
-- Required header for REST calls: X-API-KEY
-- Configure API key with env var API_KEY
+- JWT Login endpoint: POST /api/auth/login
+- Role rules:
+  - ROLE_ADMIN can publish notifications
+  - ROLE_USER and ROLE_ADMIN can read system stats
+- API key and cookie session remain available for operator workflows.
 
 ## API Examples
 
@@ -100,7 +113,7 @@ POST /api/notifications
 
 Headers:
 - Content-Type: application/json
-- X-API-KEY: dev-api-key
+- Authorization: Bearer <jwt-token>
 
 Payload:
 
@@ -123,6 +136,17 @@ Returns:
 - delivered
 - connectedUsers
 
+POST /api/auth/login
+
+Payload:
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+Response contains JWT token and role.
+
 ## WebSocket
 
 - Connect: ws://localhost:8080/ws?userId=user-42
@@ -140,9 +164,34 @@ Important keys:
 - notification.dispatcher.poll-size
 - notification.dispatcher.max-attempts
 - notification.dispatcher.base-backoff-ms
+- notification.kafka.enabled
+- notification.kafka.topic
 - notification.rate-limit.capacity
 - notification.rate-limit.refill-per-second
 - app.security.api-key
+
+## Observability Dashboard
+
+1. Prometheus scrape config: monitoring/prometheus.yml
+2. Grafana provisioning config: monitoring/grafana/provisioning/datasources/prometheus.yml
+3. Metrics endpoint: /actuator/prometheus
+
+Important metrics:
+
+- notification_delivery_latency
+- notification_retry_total
+- notification_dead_letter_total
+- notification_queue_pending_approx
+
+## Load Testing
+
+1. Script: load-tests/k6-notifications.js
+2. Run:
+  k6 run ./load-tests/k6-notifications.js --env BASE_URL=http://localhost:8080 --env ADMIN_USERNAME=admin --env ADMIN_PASSWORD=admin123
+3. Track:
+  - TPS/RPS
+  - Average and p95 latency
+  - Failure percentage
 
 ## Horizontal Scaling Path
 

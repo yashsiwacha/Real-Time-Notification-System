@@ -1,71 +1,86 @@
 package com.epam.notifications.service;
 
 import com.epam.notifications.domain.NotificationMessage;
-import com.epam.notifications.domain.QueuedNotification;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.annotation.DltHandler;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.List;
 
 @Component
+@ConditionalOnProperty(name = "notification.kafka.enabled", havingValue = "true")
 public class NotificationDispatcher {
 
-    private final NotificationQueueService notificationQueueService;
     private final NotificationPersistenceService notificationPersistenceService;
     private final ConnectedUserRegistry connectedUserRegistry;
+    private final NotificationPipelineMetrics notificationPipelineMetrics;
     private final SimpMessagingTemplate messagingTemplate;
-    private final int pollSize;
+    private final long retryDelayMs;
     private final int maxAttempts;
-    private final long baseBackoffMs;
 
-    public NotificationDispatcher(NotificationQueueService notificationQueueService,
-                                  NotificationPersistenceService notificationPersistenceService,
+    public NotificationDispatcher(NotificationPersistenceService notificationPersistenceService,
                                   ConnectedUserRegistry connectedUserRegistry,
+                                  NotificationPipelineMetrics notificationPipelineMetrics,
                                   SimpMessagingTemplate messagingTemplate,
-                                  @Value("${notification.dispatcher.poll-size:50}") int pollSize,
-                                  @Value("${notification.dispatcher.max-attempts:5}") int maxAttempts,
-                                  @Value("${notification.dispatcher.base-backoff-ms:500}") long baseBackoffMs) {
-        this.notificationQueueService = notificationQueueService;
+                                  @Value("${notification.kafka.retry-delay-ms:500}") long retryDelayMs,
+                                  @Value("${notification.kafka.delivery-attempts:5}") int maxAttempts) {
         this.notificationPersistenceService = notificationPersistenceService;
         this.connectedUserRegistry = connectedUserRegistry;
+        this.notificationPipelineMetrics = notificationPipelineMetrics;
         this.messagingTemplate = messagingTemplate;
-        this.pollSize = pollSize;
+        this.retryDelayMs = retryDelayMs;
         this.maxAttempts = maxAttempts;
-        this.baseBackoffMs = baseBackoffMs;
     }
 
-    @Scheduled(fixedDelay = 500)
-    public void dispatchReadyNotifications() {
-        List<QueuedNotification> ready = notificationQueueService.drainReady(pollSize);
-        for (QueuedNotification queued : ready) {
-            boolean delivered = tryDeliver(queued.getMessage());
-            if (delivered) {
-                notificationPersistenceService.markDelivered(queued.getMessage().notificationId());
-                continue;
-            }
-
-            long backoffMs = computeBackoffMs(queued.getAttempts() + 1);
-            queued.markFailedAndScheduleRetry(backoffMs);
-            if (queued.getAttempts() >= maxAttempts) {
-                notificationQueueService.moveToDeadLetter(queued);
-                notificationPersistenceService.markDeadLetter(
-                        queued.getMessage().notificationId(),
-                        queued.getAttempts(),
-                        "Delivery failed after max attempts"
-                );
-            } else {
-                notificationQueueService.enqueue(queued);
-                notificationPersistenceService.markRetryScheduled(
-                        queued.getMessage().notificationId(),
-                        queued.getAttempts(),
-                        Instant.ofEpochMilli(queued.getNextAttemptAt()),
-                        "User offline or WebSocket delivery failed"
-                );
-            }
+    @RetryableTopic(
+            attempts = "${notification.kafka.delivery-attempts:5}",
+            autoCreateTopics = "true",
+            dltTopicSuffix = "-dlt",
+            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
+            backoff = @Backoff(
+                    delayExpression = "${notification.kafka.retry-delay-ms:500}",
+                    multiplierExpression = "${notification.kafka.retry-multiplier:2.0}",
+                    maxDelayExpression = "${notification.kafka.retry-max-delay-ms:30000}"
+            )
+    )
+    @KafkaListener(topics = "${notification.kafka.topic:notifications.created}", groupId = "${notification.kafka.group-id:notification-dispatcher}")
+    public void consume(NotificationMessage message,
+                        @Header(name = KafkaHeaders.DELIVERY_ATTEMPT, required = false) Integer deliveryAttempt) {
+        if (tryDeliver(message)) {
+            notificationPersistenceService.markDelivered(message.notificationId());
+            notificationPipelineMetrics.onDelivered(message.createdAt());
+            return;
         }
+
+        int attempts = deliveryAttempt == null ? 1 : deliveryAttempt;
+        long nextAttemptAtMs = Instant.now().toEpochMilli() + retryDelayMs;
+        notificationPersistenceService.markRetryScheduled(
+                message.notificationId(),
+                attempts,
+                Instant.ofEpochMilli(nextAttemptAtMs),
+                "User offline or WebSocket delivery failed"
+        );
+        notificationPipelineMetrics.onRetryAttempt();
+        throw new IllegalStateException("Delivery failed for notification " + message.notificationId());
+    }
+
+    @DltHandler
+    public void onDeadLetter(NotificationMessage message,
+                             @Header(name = KafkaHeaders.RECEIVED_TOPIC, required = false) String dltTopic) {
+        notificationPersistenceService.markDeadLetter(
+                message.notificationId(),
+                maxAttempts,
+                "Moved to DLT topic: " + (dltTopic == null ? "unknown" : dltTopic)
+        );
+        notificationPipelineMetrics.onDeadLetter();
     }
 
     private boolean tryDeliver(NotificationMessage message) {
@@ -84,10 +99,5 @@ public class NotificationDispatcher {
         } catch (Exception exception) {
             return false;
         }
-    }
-
-    private long computeBackoffMs(int attemptNumber) {
-        long calculated = (long) (baseBackoffMs * Math.pow(2, Math.max(0, attemptNumber - 1)));
-        return Math.min(calculated, 30_000L);
     }
 }

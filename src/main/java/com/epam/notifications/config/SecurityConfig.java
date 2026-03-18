@@ -1,6 +1,7 @@
 package com.epam.notifications.config;
 
 import com.epam.notifications.security.ApiKeyAuthFilter;
+import com.epam.notifications.security.JwtAuthFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,7 +33,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, ApiKeyAuthFilter apiKeyAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtAuthFilter jwtAuthFilter,
+                                                   ApiKeyAuthFilter apiKeyAuthFilter) throws Exception {
         http
             .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
@@ -50,12 +53,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/demo", "/demo.html", "/favicon.ico").permitAll()
                         .requestMatchers("/assets/**").permitAll()
+                    .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/session/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/notifications").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/notifications/system-stats").hasAnyRole("ADMIN", "USER")
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -66,7 +73,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Content-Type", "X-API-KEY", "X-Request-Id"));
+        configuration.setAllowedHeaders(List.of("Content-Type", "X-API-KEY", "X-Request-Id", "Authorization"));
         configuration.setExposedHeaders(List.of("X-Request-Id", "Retry-After"));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
