@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: notification-system
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL
+        sync: false
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: notification-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: notification-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: notification-redis
+          property: password
+      - key: REDIS_SSL_ENABLED
+        value: false
+      - key: API_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://notification-system.onrender.com
+
+  - type: redis
+    name: notification-redis
+    ipAllowList: []
+    plan: free
