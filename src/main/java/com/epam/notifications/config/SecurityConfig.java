@@ -56,7 +56,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/session/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/notifications").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/notifications/system-stats").hasAnyRole("ADMIN", "USER")
