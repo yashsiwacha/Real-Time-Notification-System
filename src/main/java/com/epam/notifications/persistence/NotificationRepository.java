@@ -2,6 +2,7 @@ package com.epam.notifications.persistence;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,4 +26,49 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
             @Param("readyBefore") Instant readyBefore,
             Pageable pageable
     );
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("""
+                        update NotificationEntity n
+                        set n.status = :status,
+                                n.deliveredAt = :deliveredAt,
+                                n.updatedAt = :updatedAt
+                        where n.notificationId = :notificationId
+                        """)
+        int updateDelivered(@Param("notificationId") String notificationId,
+                                                @Param("status") NotificationDeliveryStatus status,
+                                                @Param("deliveredAt") Instant deliveredAt,
+                                                @Param("updatedAt") Instant updatedAt);
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("""
+                        update NotificationEntity n
+                        set n.status = :status,
+                                n.attempts = :attempts,
+                                n.nextAttemptAt = :nextAttemptAt,
+                                n.failedReason = :failedReason,
+                                n.updatedAt = :updatedAt
+                        where n.notificationId = :notificationId
+                        """)
+        int updateRetryScheduled(@Param("notificationId") String notificationId,
+                                                         @Param("status") NotificationDeliveryStatus status,
+                                                         @Param("attempts") int attempts,
+                                                         @Param("nextAttemptAt") Instant nextAttemptAt,
+                                                         @Param("failedReason") String failedReason,
+                                                         @Param("updatedAt") Instant updatedAt);
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("""
+                        update NotificationEntity n
+                        set n.status = :status,
+                                n.attempts = :attempts,
+                                n.failedReason = :failedReason,
+                                n.updatedAt = :updatedAt
+                        where n.notificationId = :notificationId
+                        """)
+        int updateDeadLetter(@Param("notificationId") String notificationId,
+                                                 @Param("status") NotificationDeliveryStatus status,
+                                                 @Param("attempts") int attempts,
+                                                 @Param("failedReason") String failedReason,
+                                                 @Param("updatedAt") Instant updatedAt);
 }

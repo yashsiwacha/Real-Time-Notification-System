@@ -61,13 +61,8 @@ public class NotificationPersistenceService {
         if (notificationId == null || notificationId.isBlank()) {
             return;
         }
-        notificationRepository.findById(notificationId).ifPresent(entity -> {
-            Instant now = Instant.now();
-            entity.setStatus(NotificationDeliveryStatus.DELIVERED);
-            entity.setDeliveredAt(now);
-            entity.setUpdatedAt(now);
-            notificationRepository.save(entity);
-        });
+        Instant now = Instant.now();
+        notificationRepository.updateDelivered(notificationId, NotificationDeliveryStatus.DELIVERED, now, now);
     }
 
     @Transactional
@@ -75,14 +70,14 @@ public class NotificationPersistenceService {
         if (notificationId == null || notificationId.isBlank()) {
             return;
         }
-        notificationRepository.findById(notificationId).ifPresent(entity -> {
-            entity.setStatus(NotificationDeliveryStatus.RETRY_SCHEDULED);
-            entity.setAttempts(attempts);
-            entity.setNextAttemptAt(nextAttemptAt);
-            entity.setFailedReason(failedReason);
-            entity.setUpdatedAt(Instant.now());
-            notificationRepository.save(entity);
-        });
+        notificationRepository.updateRetryScheduled(
+                notificationId,
+                NotificationDeliveryStatus.RETRY_SCHEDULED,
+                attempts,
+                nextAttemptAt,
+                failedReason,
+                Instant.now()
+        );
     }
 
     @Transactional
@@ -90,13 +85,13 @@ public class NotificationPersistenceService {
         if (notificationId == null || notificationId.isBlank()) {
             return;
         }
-        notificationRepository.findById(notificationId).ifPresent(entity -> {
-            entity.setStatus(NotificationDeliveryStatus.DEAD_LETTER);
-            entity.setAttempts(attempts);
-            entity.setFailedReason(failedReason);
-            entity.setUpdatedAt(Instant.now());
-            notificationRepository.save(entity);
-        });
+        notificationRepository.updateDeadLetter(
+                notificationId,
+                NotificationDeliveryStatus.DEAD_LETTER,
+                attempts,
+                failedReason,
+                Instant.now()
+        );
     }
 
     @Transactional(readOnly = true)

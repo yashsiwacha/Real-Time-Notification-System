@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,8 +50,9 @@ public class NotificationController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createNotification(@Valid @RequestBody NotificationRequest request) {
-        String limiterKey = "notify:" + request.userId();
+    public ResponseEntity<?> createNotification(@Valid @RequestBody NotificationRequest request,
+                                                Authentication authentication) {
+        String limiterKey = buildLimiterKey(authentication, request.userId());
         TokenBucketRateLimiter.Decision decision = tokenBucketRateLimiter.consume(limiterKey, 1);
         if (!decision.allowed()) {
             return ResponseEntity
@@ -78,5 +80,12 @@ public class NotificationController {
                 "delivered", Math.toIntExact(notificationPersistenceService.deliveredCount()),
                 "connectedUsers", connectedUserRegistry.connectedCount()
         );
+    }
+
+    private String buildLimiterKey(Authentication authentication, String targetUserId) {
+        if (authentication != null && authentication.getName() != null && !authentication.getName().isBlank()) {
+            return "notify:actor:" + authentication.getName();
+        }
+        return "notify:target:" + targetUserId;
     }
 }
