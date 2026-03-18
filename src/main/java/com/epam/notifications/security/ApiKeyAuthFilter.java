@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import jakarta.servlet.http.Cookie;
 
 @Component
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
@@ -23,11 +24,14 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
     private final String configuredApiKey;
     private final boolean requireApiKey;
+    private final ApiSessionTokenService tokenService;
 
     public ApiKeyAuthFilter(@Value("${app.security.api-key:}") String configuredApiKey,
-                            @Value("${app.security.require-api-key:false}") boolean requireApiKey) {
+                            @Value("${app.security.require-api-key:false}") boolean requireApiKey,
+                            ApiSessionTokenService tokenService) {
         this.configuredApiKey = configuredApiKey;
         this.requireApiKey = requireApiKey;
+        this.tokenService = tokenService;
     }
 
     @PostConstruct
@@ -43,6 +47,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         return path.equals("/")
                 || path.equals("/demo")
                 || path.equals("/demo.html")
+                || path.startsWith("/api/session")
                 || path.equals("/favicon.ico")
                 || path.startsWith("/assets/")
                 || path.startsWith("/actuator")
@@ -65,23 +70,39 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         }
 
         String providedApiKey = request.getHeader(API_KEY_HEADER);
-        if (providedApiKey == null || providedApiKey.isBlank()) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"unauthorized\",\"message\":\"Missing API key\"}");
-            return;
-        }
+        String sessionToken = readCookie(request, ApiSessionTokenService.COOKIE_NAME);
 
-        if (!configuredApiKey.equals(providedApiKey)) {
+        boolean validHeaderKey = providedApiKey != null && !providedApiKey.isBlank() && configuredApiKey.equals(providedApiKey);
+        boolean validSessionCookie = tokenService.isValid(sessionToken);
+
+        if (!validHeaderKey && !validSessionCookie) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"unauthorized\",\"message\":\"Invalid API key\"}");
+            String message = (providedApiKey == null || providedApiKey.isBlank()) && (sessionToken == null || sessionToken.isBlank())
+                    ? "Missing API key or session"
+                    : "Invalid API key or session";
+            response.getWriter().write("{\"error\":\"unauthorized\",\"message\":\"" + message + "\"}");
             return;
         }
 
         UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken("api-key-client", null, AuthorityUtils.NO_AUTHORITIES);
+                new UsernamePasswordAuthenticationToken(validSessionCookie ? "ui-session-client" : "api-key-client", null, AuthorityUtils.NO_AUTHORITIES);
         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
         filterChain.doFilter(request, response);
+    }
+
+    private String readCookie(HttpServletRequest request, String cookieName) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+
+        for (Cookie cookie : cookies) {
+            if (cookieName.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+
+        return null;
     }
 }

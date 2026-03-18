@@ -50,6 +50,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/demo", "/demo.html", "/favicon.ico").permitAll()
                         .requestMatchers("/assets/**").permitAll()
+                    .requestMatchers("/api/session/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/ws/**").permitAll()

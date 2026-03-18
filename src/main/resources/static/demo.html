@@ -488,12 +488,14 @@
                 </div>
 
                 <div class="actions">
+                    <button class="btn-primary" id="startSessionBtn">Start Session</button>
+                    <button class="btn-soft" id="endSessionBtn">End Session</button>
                     <button class="btn-primary" id="connectBtn">Connect WebSocket</button>
                     <button class="btn-soft" id="disconnectBtn">Disconnect</button>
                     <button class="btn-warn" id="statsBtn">Fetch Stats</button>
                     <button class="btn-soft" id="smokeBtn">Run E2E Smoke</button>
                 </div>
-                <div class="status-line" id="sessionSummary">Ready. Enter API key, then connect.</div>
+                <div class="status-line" id="sessionSummary">Ready. Start session once, then connect.</div>
             </article>
 
             <article class="card">
@@ -584,8 +586,13 @@
         stompClient: null,
         connectedUserId: null,
         lastPayload: null,
-        statsTimer: null
+        statsTimer: null,
+        burstRunning: false,
+        smokeRunning: false,
+        sessionAuthenticated: false
     };
+
+    const MAX_FEED_LINES = 180;
 
     const elements = {
         apiKey: document.getElementById("apiKey"),
@@ -645,6 +652,10 @@
         line.className = `feed-line ${kind || "info"}`;
         line.textContent = `[${nowLabel()}] ${message}`;
         elements.feed.prepend(line);
+
+        while (elements.feed.children.length > MAX_FEED_LINES) {
+            elements.feed.removeChild(elements.feed.lastChild);
+        }
     }
 
     function addTimeline(message) {
@@ -669,7 +680,9 @@
     }
 
     function saveSessionInputs() {
-        localStorage.setItem(storageKeys.apiKey, elements.apiKey.value.trim());
+        if (elements.apiKey.value.trim()) {
+            localStorage.setItem(storageKeys.apiKey, elements.apiKey.value.trim());
+        }
         localStorage.setItem(storageKeys.userId, elements.userId.value.trim());
     }
 
@@ -729,22 +742,90 @@
     }
 
     function headersWithApiKey() {
+        const headers = { "Content-Type": "application/json" };
+        if (state.sessionAuthenticated) {
+            return headers;
+        }
+
         const apiKey = elements.apiKey.value.trim();
         if (!apiKey) {
             addFeed("API key is required", "error");
             throw new Error("Missing API key");
         }
-        return {
-            "Content-Type": "application/json",
-            "X-API-KEY": apiKey
-        };
+
+        headers["X-API-KEY"] = apiKey;
+        return headers;
+    }
+
+    function clearSavedApiKey() {
+        localStorage.removeItem(storageKeys.apiKey);
+        elements.apiKey.value = "";
+    }
+
+    async function startSession() {
+        const apiKey = elements.apiKey.value.trim();
+        if (!apiKey) {
+            addFeed("Paste API key once to start session", "error");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/session/login", {
+                method: "POST",
+                headers: { "X-API-KEY": apiKey }
+            });
+            const data = await parseResponse(response);
+            if (!response.ok) {
+                addFeed(`POST /api/session/login -> ${response.status} ${shortJson(data)}`, "error");
+                setSessionSummary("Session start failed. Check API key.");
+                return;
+            }
+
+            state.sessionAuthenticated = true;
+            addFeed("Session started successfully. API key no longer needed for each request.", "success");
+            addTimeline("Cookie session started");
+            setSessionSummary("Session active via secure cookie. Connect and publish freely.");
+            clearSavedApiKey();
+        } catch (error) {
+            addFeed(`Session start failed: ${error.message}`, "error");
+        }
+    }
+
+    async function endSession() {
+        try {
+            await fetch("/api/session/logout", { method: "POST" });
+            state.sessionAuthenticated = false;
+            addFeed("Session ended", "info");
+            addTimeline("Cookie session ended");
+            setSessionSummary("Session ended. Paste API key to start a new session.");
+        } catch (error) {
+            addFeed(`Session end failed: ${error.message}`, "error");
+        }
+    }
+
+    async function syncSessionState() {
+        try {
+            const response = await fetch("/api/session/status");
+            const data = await parseResponse(response);
+            if (response.ok && data && data.authenticated === true) {
+                state.sessionAuthenticated = true;
+                setSessionSummary("Session active via secure cookie. Connect and publish freely.");
+                addFeed("Existing session restored from cookie", "success");
+            } else {
+                state.sessionAuthenticated = false;
+                setSessionSummary("Ready. Start session once, then connect.");
+            }
+        } catch (error) {
+            state.sessionAuthenticated = false;
+            setSessionSummary("Ready. Start session once, then connect.");
+        }
     }
 
     async function fetchStats(showFeedMessage) {
         try {
             const response = await fetch("/api/notifications/system-stats", {
                 method: "GET",
-                headers: { "X-API-KEY": elements.apiKey.value.trim() }
+                headers: state.sessionAuthenticated ? {} : { "X-API-KEY": elements.apiKey.value.trim() }
             });
             const data = await parseResponse(response);
 
@@ -861,12 +942,22 @@
     }
 
     async function runSmokeTest() {
+        if (state.smokeRunning) {
+            addFeed("Smoke test already running", "error");
+            return;
+        }
+
+        state.smokeRunning = true;
         addFeed("Running smoke test: connect -> publish -> stats", "info");
-        await connectWebSocket();
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        const ok = await sendNotification();
-        if (ok) {
-            await fetchStats(true);
+        try {
+            await connectWebSocket();
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            const ok = await sendNotification();
+            if (ok) {
+                await fetchStats(true);
+            }
+        } finally {
+            state.smokeRunning = false;
         }
     }
 
@@ -883,17 +974,40 @@
 
     document.getElementById("connectBtn").addEventListener("click", connectWebSocket);
     document.getElementById("disconnectBtn").addEventListener("click", disconnectWebSocket);
+    document.getElementById("startSessionBtn").addEventListener("click", startSession);
+    document.getElementById("endSessionBtn").addEventListener("click", endSession);
     document.getElementById("sendBtn").addEventListener("click", () => sendNotification());
     document.getElementById("statsBtn").addEventListener("click", () => fetchStats(true));
     document.getElementById("smokeBtn").addEventListener("click", runSmokeTest);
 
     document.getElementById("burstBtn").addEventListener("click", async () => {
+        if (state.burstRunning) {
+            addFeed("Burst already running", "error");
+            return;
+        }
+
+        state.burstRunning = true;
+        const burstButton = document.getElementById("burstBtn");
+        const previousLabel = burstButton.textContent;
+        burstButton.disabled = true;
+        burstButton.textContent = "Sending burst...";
+
+        const baseMessage = elements.message.value.replace(/\s\[\d+\/\d+\]$/, "");
+        elements.message.value = baseMessage;
+
         addFeed("Sending 5-event burst", "info");
-        for (let i = 0; i < 5; i += 1) {
-            const payload = buildPayload();
-            payload.message = `${payload.message} [${i + 1}/5]`;
-            await sendNotification(payload);
-            await new Promise((resolve) => setTimeout(resolve, 220));
+        try {
+            for (let i = 0; i < 5; i += 1) {
+                const payload = buildPayload();
+                payload.message = `${baseMessage} [${i + 1}/5]`;
+                await sendNotification(payload);
+                await new Promise((resolve) => setTimeout(resolve, 220));
+            }
+        } finally {
+            state.burstRunning = false;
+            burstButton.disabled = false;
+            burstButton.textContent = previousLabel;
+            elements.message.value = baseMessage;
         }
     });
 
@@ -933,8 +1047,8 @@
     elements.userId.addEventListener("input", saveSessionInputs);
 
     hydrateSessionInputs();
+    syncSessionState();
     setSocketState(false);
-    setSessionSummary("Ready. Add API key, connect WebSocket, and publish test events.");
     addTimeline("Console loaded");
     addFeed("Console ready. Start by connecting WebSocket.", "info");
 </script>
