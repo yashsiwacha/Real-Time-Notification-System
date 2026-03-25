@@ -1,122 +1,160 @@
-# Real-Time Notification System (Production-Oriented Spring Boot)
+# Real-Time Notification System
 
-This service implements Swiggy and Zomato style notification delivery with reliability controls and production patterns.
+Production-oriented notification backend built with Spring Boot. The project delivers Swiggy/Zomato style real-time updates with reliability patterns such as idempotency, retry, dead-letter handling, rate limiting, persistence, observability, and load testing.
 
-## Production Features
+## What This Project Solves
 
-- Real-time WebSocket delivery using STOMP and user-specific destinations
-- JWT authentication with role-based access control (ADMIN and USER)
-- API key and login-once cookie session support for operator console
-- Token-bucket rate limiting per user
-- Idempotency protection to prevent duplicate notification creation
+This system is designed for event-driven notification delivery where clients must receive low-latency updates while backend workflows remain resilient under spikes.
+
+Core use cases:
+- Real-time order status updates
+- At-least-once processing with controlled retries
+- Duplicate request protection with idempotency
+- Role-based secured publish and monitoring endpoints
+- Production visibility through metrics and dashboards
+
+## Features
+
+- Real-time delivery using WebSocket + STOMP (`/user/queue/notifications`)
+- JWT authentication with RBAC (`ADMIN`, `USER`)
+- API key and session login support for operator workflows
+- Token-bucket rate limiting (Redis + Lua)
+- Idempotent notification creation per user
 - Retry with exponential backoff and dead-letter transition
-- Persistent delivery state in PostgreSQL via Spring Data JPA
-- Kafka-based event pipeline (producer -> topic -> consumer)
-- Redis-backed queue fallback mode for environments without Kafka
-- Redis-backed distributed presence registry for WebSocket users
-- Redis-backed distributed token-bucket limiter via Lua script
-- Flyway migrations for schema versioning
-- Crash recovery loader that restores pending notifications from DB at startup
-- Request correlation IDs through X-Request-Id for traceability
-- Prometheus metrics endpoint and Grafana dashboard integration
-- k6 load-test script with staged ramp to 10k virtual users
+- Durable delivery state in PostgreSQL (Flyway + JPA)
+- Kafka-first pipeline (toggleable) with Redis fallback mode
+- Startup recovery of pending notifications
+- Prometheus metrics and Grafana-ready configuration
+- k6 load testing profile up to 10k VUs
 
-## Stack
+## Tech Stack
 
 - Java 17
-- Spring Boot 3
-- Spring WebSocket
-- Spring Security
-- Spring Data JPA
+- Spring Boot 3.x
+- Spring Web, WebSocket, Security, Data JPA
 - Spring Kafka
-- Flyway
-- PostgreSQL (prod profile) and H2 (default local profile)
+- PostgreSQL
 - Redis
-- Prometheus and Grafana
-- k6 (for load testing)
+- Flyway
+- Prometheus + Grafana
+- Docker Compose
+- k6
 
-## Delivery Lifecycle
+## Architecture Overview
 
-1. Client sends POST /api/notifications with X-API-KEY.
-2. Service enforces rate limit and checks idempotency key.
-3. Notification is persisted with ENQUEUED state.
-4. Event is published to Kafka topic notifications.created.
-5. Kafka consumer attempts WebSocket delivery to /user/queue/notifications.
-6. On failure, state moves to RETRY_SCHEDULED with next attempt timestamp.
-7. On success, state becomes DELIVERED.
-8. If retries exceed configured maximum, state becomes DEAD_LETTER.
+Request flow (Kafka mode):
 
-## Run Local
+1. Client calls `POST /api/notifications`.
+2. Service validates auth, rate limit, and idempotency.
+3. Notification is persisted as `ENQUEUED`.
+4. Event is published to Kafka topic `notifications.created`.
+5. Consumer attempts WebSocket delivery.
+6. On success, state becomes `DELIVERED`.
+7. On failure, state moves to `RETRY_SCHEDULED`.
+8. After max attempts, state moves to `DEAD_LETTER`.
 
-1. Build and start locally:
-   mvn spring-boot:run
+When Kafka is disabled, queueing/dispatch fallback runs through Redis-backed scheduling.
 
-2. Default local profile uses embedded H2 at data/notifications.
+## Project Structure
 
-3. Redis is required for limiter and presence features.
-4. Kafka mode can be enabled with KAFKA_ENABLED=true.
+- `src/main/java` application code
+- `src/main/resources/application.yml` base config
+- `src/main/resources/application-prod.yml` production config overrides
+- `src/main/resources/db/migration` Flyway migrations
+- `monitoring/` Prometheus and Grafana provisioning
+- `load-tests/` k6 scripts and docs
+- `docker-compose.yml` local production-like stack
+- `render.yaml` Render deployment blueprint
 
-## Run Tests
+## Quick Start (Local)
 
-1. Integration tests use Testcontainers (PostgreSQL + Redis):
-  mvn test
+### 1. Prerequisites
 
-## Run Production-Like with Docker Compose
+- Java 17
+- Maven
+- Docker (recommended)
 
-1. Start stack:
-   docker compose up --build
+### 2. Run with Docker Compose (recommended)
 
-2. Services started:
-- app on 8080
-- postgres on 5432
-- redis on 6379
-- kafka on 9092
-- prometheus on 9090
-- grafana on 3000
+```bash
+docker compose up --build
+```
 
-## CI/CD (GitHub Actions)
+Services:
+- App: `http://localhost:8080`
+- Postgres: `localhost:5432`
+- Redis: `localhost:6379`
+- Kafka: `localhost:9092`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
 
-Workflow file:
+### 3. Run without Docker
 
-- `.github/workflows/ci-cd.yml`
+```bash
+mvn spring-boot:run
+```
 
-Pipeline behavior:
+Default profile uses local H2 for fast startup. Redis is still needed for limiter/presence features.
 
-1. On push and pull request to main/master:
-  - Runs `mvn verify`
-  - Executes tests (including Testcontainers integration test when Docker is available on runner)
-  - Uploads built JAR as artifact
+## Configuration
 
-2. On push events:
-  - Builds Docker image
-  - Publishes image to GHCR as:
-    - `ghcr.io/<owner>/notification-system:latest` (default branch)
-    - branch tag
-    - sha tag
+Key environment variables:
 
-Notes:
+- `SPRING_PROFILES_ACTIVE` (use `prod` for PostgreSQL profile)
+- `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
+- `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT`
+- `KAFKA_ENABLED` (`true` or `false`)
+- `KAFKA_BOOTSTRAP_SERVERS`
+- `API_KEY`
+- `JWT_SECRET`
+- `ALLOWED_ORIGINS`
 
-- Ensure GitHub Actions has package write permission (already configured in workflow).
-- If your repository uses branch name `main`, workflow triggers automatically.
+Performance-related production knobs in `application-prod.yml`:
+- Tomcat thread/connection limits
+- Hikari pool sizing
+- Kafka producer batching/compression
+- Retry attempt/delay settings
+- Rate limiter capacity/refill
 
-## API Security
+## Security Model
 
-- JWT Login endpoint: POST /api/auth/login
-- Role rules:
-  - ROLE_ADMIN can publish notifications
-  - ROLE_USER and ROLE_ADMIN can read system stats
-- API key and cookie session remain available for operator workflows.
+### Authentication
 
-## API Examples
+- JWT login endpoint: `POST /api/auth/login`
+- API key support for service/operator workflows
+- Session-based operator login support
 
-POST /api/notifications
+### Authorization
+
+- `ROLE_ADMIN`: publish notifications
+- `ROLE_ADMIN` and `ROLE_USER`: read system stats
+
+## API Reference
+
+### Login
+
+`POST /api/auth/login`
+
+Request:
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+### Create Notification
+
+`POST /api/notifications`
 
 Headers:
-- Content-Type: application/json
-- Authorization: Bearer <jwt-token>
+- `Authorization: Bearer <jwt>`
+- `Content-Type: application/json`
 
-Payload:
+Request:
 
+```json
 {
   "userId": "user-42",
   "type": "ORDER_STATUS",
@@ -127,80 +165,103 @@ Payload:
     "etaMinutes": "18"
   }
 }
+```
 
-GET /api/notifications/system-stats
+### System Stats
 
-Returns:
-- pendingQueue
-- deadLetter
-- delivered
-- connectedUsers
+`GET /api/notifications/system-stats`
 
-POST /api/auth/login
+Response includes:
+- `pendingQueue`
+- `deadLetter`
+- `delivered`
+- `connectedUsers`
 
-Payload:
+## WebSocket Usage
 
-{
-  "username": "admin",
-  "password": "admin123"
-}
+- Connect endpoint: `ws://localhost:8080/ws?userId=<userId>`
+- Subscribe destination: `/user/queue/notifications`
 
-Response contains JWT token and role.
+## Observability
 
-## WebSocket
+- Health: `/actuator/health`
+- Metrics: `/actuator/prometheus`
 
-- Connect: ws://localhost:8080/ws?userId=user-42
-- Subscribe: /user/queue/notifications
+Example business metrics:
+- `notification_delivery_latency`
+- `notification_retry_total`
+- `notification_dead_letter_total`
+- `notification_queue_pending_approx`
 
-## Configuration
+Monitoring config:
+- `monitoring/prometheus.yml`
+- `monitoring/grafana/provisioning/datasources/prometheus.yml`
 
-Main config:
-- src/main/resources/application.yml
+## Testing
 
-Prod overrides:
-- src/main/resources/application-prod.yml
+Run tests:
 
-Important keys:
-- notification.dispatcher.poll-size
-- notification.dispatcher.max-attempts
-- notification.dispatcher.base-backoff-ms
-- notification.kafka.enabled
-- notification.kafka.topic
-- notification.rate-limit.capacity
-- notification.rate-limit.refill-per-second
-- app.security.api-key
+```bash
+mvn test
+```
 
-## Observability Dashboard
-
-1. Prometheus scrape config: monitoring/prometheus.yml
-2. Grafana provisioning config: monitoring/grafana/provisioning/datasources/prometheus.yml
-3. Metrics endpoint: /actuator/prometheus
-
-Important metrics:
-
-- notification_delivery_latency
-- notification_retry_total
-- notification_dead_letter_total
-- notification_queue_pending_approx
+Integration tests use Testcontainers (Postgres + Redis) when available.
 
 ## Load Testing
 
-1. Script: load-tests/k6-notifications.js
-2. Run:
-  k6 run ./load-tests/k6-notifications.js --env BASE_URL=http://localhost:8080 --env ADMIN_USERNAME=admin --env ADMIN_PASSWORD=admin123
-3. Track:
-  - TPS/RPS
-  - Average and p95 latency
-  - Failure percentage
+k6 script: `load-tests/k6-notifications.js`
 
-## Horizontal Scaling Path
+Default (steady-state publish-focused):
 
-Current code already uses shared Redis for queue scheduling, user presence, and rate limiting.
+```bash
+k6 run ./load-tests/k6-notifications.js \
+  --env BASE_URL=http://localhost:8080 \
+  --env ADMIN_USERNAME=admin \
+  --env ADMIN_PASSWORD=admin123
+```
 
-For full horizontal scale:
+Auth-heavy baseline mode:
 
-1. Upgrade from Redis sorted-set polling to Redis Streams consumer groups or Kafka partitions for higher throughput.
-2. Add sticky sessions or external WebSocket broker for deterministic cross-instance fan-out.
-3. Run multiple app instances behind load balancer.
-4. Add dead-letter replay endpoint with operator controls.
-5. Export metrics to Prometheus and set alerts on retry and dead-letter growth.
+```bash
+k6 run ./load-tests/k6-notifications.js \
+  --env BASE_URL=http://localhost:8080 \
+  --env ADMIN_USERNAME=admin \
+  --env ADMIN_PASSWORD=admin123 \
+  --env LOGIN_EACH_ITERATION=true
+```
+
+## Deployment
+
+### Render (current cloud target)
+
+- Blueprint file: `render.yaml`
+- Runtime mode on Render currently uses `KAFKA_ENABLED=false`
+- Requires external PostgreSQL (`DB_URL`, for example Neon)
+- Includes Redis service in blueprint
+
+Deployment guide:
+- `deploy/render/RENDER_DEPLOYMENT.md`
+
+### CI/CD
+
+GitHub Actions workflow:
+- `.github/workflows/ci-cd.yml`
+
+Pipeline includes:
+- Build and tests
+- Docker image build
+- Container image publish (GHCR)
+
+## Current Status
+
+- Production-oriented architecture implemented
+- Render deployment path available and tested (Redis mode)
+- Kafka mode available for environments with managed Kafka
+- 10k load profile validated with major reliability improvements
+
+## Roadmap
+
+- External managed Kafka for cloud deployments
+- Replay tooling for dead-letter notifications
+- WebSocket fan-out optimization for multi-instance scale
+- Further tail-latency reduction for strict p95 SLO targets
