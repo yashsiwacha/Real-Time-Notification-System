@@ -59,7 +59,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/notifications").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/notifications").hasAnyRole("ADMIN", "USER")
                     .requestMatchers(HttpMethod.GET, "/api/notifications/system-stats").hasAnyRole("ADMIN", "USER")
                     .requestMatchers(HttpMethod.GET, "/api/notifications/overview").hasAnyRole("ADMIN", "USER")
                     .requestMatchers(HttpMethod.GET, "/api/notifications/recent-events").hasAnyRole("ADMIN", "USER")
