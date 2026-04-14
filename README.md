@@ -262,7 +262,7 @@ Troubleshooting summary (what broke and what was fixed):
 
 - Blueprint file: `render.yaml`
 - Runtime mode on Render currently uses `KAFKA_ENABLED=false`
-- Requires external PostgreSQL (`DB_URL`, for example Neon)
+- Requires external PostgreSQL (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, for example Neon)
 - Includes Redis service in blueprint
 
 Deployment guide:

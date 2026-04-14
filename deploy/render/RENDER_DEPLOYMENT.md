@@ -34,8 +34,10 @@ jdbc:postgresql://ep-xxxxxxx-pooler.us-east-2.aws.neon.tech/neondb?sslmode=requi
 6. Click `Apply`
 7. Open the `notification-system` service -> `Environment`
 8. Set `DB_URL` to your Neon JDBC URL
-9. Set `KAFKA_ENABLED=false` (current Render blueprint provisions Redis + Postgres only)
-10. Save changes and redeploy
+9. Set `DB_USERNAME` to your Neon username
+10. Set `DB_PASSWORD` to your Neon password
+11. Set `KAFKA_ENABLED=false` (current Render blueprint provisions Redis only)
+12. Save changes and redeploy
 
 ## 4) Wait for initial build
 
@@ -43,7 +45,7 @@ Render will:
 
 1. Build Docker image
 2. Provision Redis
-3. Use your configured `DB_URL` for Neon Postgres
+3. Use your configured `DB_URL` + credentials for Neon Postgres
 4. Start service and run health checks at `/actuator/health`
 
 ## 5) Verify deployment
@@ -89,3 +91,4 @@ Invoke-RestMethod -Uri "$baseUrl/api/notifications" -Method Post -Headers $heade
 2. Free plans may spin down when idle.
 3. For production traffic, use paid plans and managed secret rotation.
 4. For Neon, keep `sslmode=require` in `DB_URL`.
+5. If your JDBC URL already embeds credentials, `DB_USERNAME` and `DB_PASSWORD` can remain empty.
