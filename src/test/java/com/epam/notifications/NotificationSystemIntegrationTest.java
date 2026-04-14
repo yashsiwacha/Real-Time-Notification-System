@@ -95,4 +95,22 @@ class NotificationSystemIntegrationTest {
         assertFalse(Boolean.TRUE.equals(first.getBody().get("duplicate")));
         assertTrue(Boolean.TRUE.equals(second.getBody().get("duplicate")));
     }
+
+    @Test
+    void shouldRejectMissingIdempotencyKey() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-API-KEY", "test-api-key");
+
+        Map<String, Object> payload = Map.of(
+                "userId", "user-42",
+                "type", "ORDER_STATUS",
+                "message", "Out for delivery"
+        );
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
+        ResponseEntity<Map> response = restTemplate.postForEntity("/api/notifications", requestEntity, Map.class);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
 }

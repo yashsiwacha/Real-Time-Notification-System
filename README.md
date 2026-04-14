@@ -21,11 +21,13 @@ Core use cases:
 - Token-bucket rate limiting (Redis + Lua)
 - Idempotent notification creation per user
 - Retry with exponential backoff and dead-letter transition
+- Consumer-side idempotency guard for duplicate Kafka deliveries
+- API backpressure and circuit-breaker protection during downstream instability
 - Durable delivery state in PostgreSQL (Flyway + JPA)
 - Kafka-first pipeline (toggleable) with Redis fallback mode
 - Startup recovery of pending notifications
 - Prometheus metrics and Grafana-ready configuration
-- k6 load testing profile up to 10k VUs
+- k6 load testing profile for sustained 500 events/sec validation
 
 ## Tech Stack
 
@@ -54,6 +56,17 @@ Request flow (Kafka mode):
 8. After max attempts, state moves to `DEAD_LETTER`.
 
 When Kafka is disabled, queueing/dispatch fallback runs through Redis-backed scheduling.
+
+Partitioning and horizontal scaling:
+- Producer sends with key = `userId` for per-user ordering.
+- Kafka partitions enable parallel processing across consumers.
+- Listener concurrency can be increased to process partitions in parallel in one instance.
+- Multiple instances can join the same consumer group for horizontal scale.
+
+Idempotency details:
+- `idempotencyKey` is required on API requests.
+- DB uniqueness on `(user_id, idempotency_key)` prevents race-condition duplicates.
+- Consumer skips duplicate Kafka events when notification is already terminal (`DELIVERED` or `DEAD_LETTER`).
 
 ## Project Structure
 
@@ -192,10 +205,15 @@ Example business metrics:
 - `notification_retry_total`
 - `notification_dead_letter_total`
 - `notification_queue_pending_approx`
+- `notification_duplicate_skipped_total`
+- `notification_delivery_failed_total`
+- `notification_backpressure_rejected_total`
+- `notification_circuit_open_total`
 
 Monitoring config:
 - `monitoring/prometheus.yml`
 - `monitoring/grafana/provisioning/datasources/prometheus.yml`
+- `monitoring/grafana/provisioning/dashboards/dashboards.yml`
 
 ## Testing
 
@@ -211,13 +229,15 @@ Integration tests use Testcontainers (Postgres + Redis) when available.
 
 k6 script: `load-tests/k6-notifications.js`
 
-Default (steady-state publish-focused):
+Default 500 EPS validation:
 
 ```bash
 k6 run ./load-tests/k6-notifications.js \
   --env BASE_URL=http://localhost:8080 \
   --env ADMIN_USERNAME=admin \
-  --env ADMIN_PASSWORD=admin123
+  --env ADMIN_PASSWORD=admin123 \
+  --env TARGET_EPS=500 \
+  --env TEST_DURATION=3m
 ```
 
 Auth-heavy baseline mode:
@@ -229,6 +249,12 @@ k6 run ./load-tests/k6-notifications.js \
   --env ADMIN_PASSWORD=admin123 \
   --env LOGIN_EACH_ITERATION=true
 ```
+
+Troubleshooting summary (what broke and what was fixed):
+- Duplicate creates under concurrent retries: fixed by DB uniqueness + producer race-safe duplicate resolution.
+- Duplicate Kafka deliveries causing repeated sends: fixed by terminal-state idempotency check in consumer.
+- High queue depth under burst load: fixed by API backpressure threshold (`429 backpressure_active`).
+- Downstream dispatch instability causing retry storms: fixed by circuit breaker with deferred retries.
 
 ## Deployment
 

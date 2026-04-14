@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { Counter, Rate } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const ADMIN_USERNAME = __ENV.ADMIN_USERNAME || 'admin';
@@ -7,21 +8,33 @@ const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || 'admin123';
 const LOGIN_EACH_ITERATION = (__ENV.LOGIN_EACH_ITERATION || 'false').toLowerCase() === 'true';
 const USE_SETUP_TOKEN = (__ENV.USE_SETUP_TOKEN || 'true').toLowerCase() === 'true';
 const TOKEN_REFRESH_ITERATIONS = Number(__ENV.TOKEN_REFRESH_ITERATIONS || '0');
+const TARGET_EPS = Number(__ENV.TARGET_EPS || '500');
+const TEST_DURATION = __ENV.TEST_DURATION || '3m';
+const PRE_ALLOCATED_VUS = Number(__ENV.PRE_ALLOCATED_VUS || '300');
+const MAX_VUS = Number(__ENV.MAX_VUS || '1200');
+
+const acceptedRate = new Rate('accepted_rate');
+const rateLimitedTotal = new Counter('rate_limited_total');
+const serverErrorTotal = new Counter('server_error_total');
 
 let cachedToken = null;
 let lastTokenIteration = -1;
 
 export const options = {
-  stages: [
-    { duration: '30s', target: 100 },
-    { duration: '1m', target: 1000 },
-    { duration: '2m', target: 5000 },
-    { duration: '2m', target: 10000 },
-    { duration: '30s', target: 0 }
-  ],
+  scenarios: {
+    notify_steady_500eps: {
+      executor: 'constant-arrival-rate',
+      rate: TARGET_EPS,
+      timeUnit: '1s',
+      duration: TEST_DURATION,
+      preAllocatedVUs: PRE_ALLOCATED_VUS,
+      maxVUs: MAX_VUS
+    }
+  },
   thresholds: {
-    http_req_failed: ['rate<0.05'],
-    http_req_duration: ['p(95)<900']
+    http_req_failed: ['rate<0.02'],
+    http_req_duration: ['p(95)<800'],
+    accepted_rate: ['rate>0.98']
   }
 };
 
@@ -115,6 +128,14 @@ export default function (data) {
   if (response.status === 401 && !LOGIN_EACH_ITERATION) {
     cachedToken = loginAndGetToken();
     token = cachedToken;
+  }
+
+  acceptedRate.add(response.status === 202);
+  if (response.status === 429) {
+    rateLimitedTotal.add(1);
+  }
+  if (response.status >= 500) {
+    serverErrorTotal.add(1);
   }
 
   check(response, {

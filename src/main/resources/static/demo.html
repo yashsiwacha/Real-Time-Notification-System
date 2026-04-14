@@ -1,30 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
+﻿<!DOCTYPE html>
+<html class="dark" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notification Operations Console</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>OBSERVATORY_CORE | Notification System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <style>
         :root {
-            --bg-top: #092536;
-            --bg-bottom: #071827;
-            --surface: rgba(243, 250, 252, 0.95);
-            --surface-2: #ffffff;
-            --ink: #0f2233;
-            --muted: #4a6378;
-            --line: rgba(17, 45, 67, 0.16);
-            --brand: #0fa58c;
-            --brand-2: #067d6e;
-            --warn: #f4a31b;
-            --error: #d6455d;
-            --ok: #1f9d5b;
-            --console-bg: #0b1420;
-            --console-line: rgba(158, 183, 207, 0.14);
-            --glow: rgba(15, 165, 140, 0.22);
-            --shadow: 0 18px 42px rgba(3, 18, 31, 0.25);
+            --bg: #060e20;
+            --bg-soft: #0b1530;
+            --surface: #101b34;
+            --surface-high: #172443;
+            --surface-alt: #0f1930;
+            --text: #dce7ff;
+            --muted: #9aa9c8;
+            --line: #2a3554;
+            --primary: #81ecff;
+            --primary-strong: #00d4ec;
+            --secondary: #69f6b8;
+            --warning: #ffb148;
+            --error: #ff716c;
+            --ok: #58e7ab;
+            --radius: 10px;
         }
 
         * {
@@ -33,29 +32,104 @@
 
         body {
             margin: 0;
-            min-height: 100vh;
-            font-family: "Sora", "Segoe UI", sans-serif;
-            color: var(--ink);
+            color: var(--text);
+            font-family: "Inter", sans-serif;
             background:
-                radial-gradient(960px 420px at 12% -5%, rgba(42, 167, 175, 0.38) 0%, transparent 70%),
-                radial-gradient(860px 420px at 100% 0%, rgba(251, 186, 88, 0.24) 0%, transparent 70%),
-                linear-gradient(150deg, var(--bg-top), var(--bg-bottom));
+                    radial-gradient(1000px 420px at 8% -4%, rgba(0, 212, 236, 0.18), transparent 70%),
+                    radial-gradient(860px 360px at 96% 0%, rgba(255, 177, 72, 0.15), transparent 72%),
+                    linear-gradient(180deg, #091328, #060e20);
+            min-height: 100vh;
         }
 
-        .grain {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0.22;
-            background-image: radial-gradient(#cde9f2 0.35px, transparent 0.35px);
-            background-size: 3px 3px;
+        .app {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
         }
 
-        .container {
-            width: min(1260px, 100% - 30px);
-            margin: 18px auto 28px;
-            position: relative;
-            z-index: 1;
+        .side {
+            border-right: 1px solid var(--line);
+            background: rgba(9, 19, 40, 0.96);
+            padding: 18px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+        }
+
+        .mark {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(140deg, var(--primary), var(--primary-strong));
+            box-shadow: 0 0 24px rgba(0, 212, 236, 0.32);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 16px;
+            letter-spacing: .06em;
+        }
+
+        .brand p {
+            margin: 2px 0 0;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--secondary);
+            letter-spacing: .14em;
+            font-weight: 700;
+        }
+
+        .menu {
+            display: grid;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .menu button {
+            width: 100%;
+            text-align: left;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--muted);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .14em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: .18s ease;
+        }
+
+        .menu button.active,
+        .menu button:hover {
+            color: var(--primary);
+            border-color: rgba(129, 236, 255, 0.28);
+            background: rgba(23, 36, 67, 0.72);
+        }
+
+        .side .meta {
+            margin-top: auto;
+            border-top: 1px solid var(--line);
+            padding-top: 12px;
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .main {
+            padding: 16px;
         }
 
         .topbar {
@@ -63,538 +137,483 @@
             justify-content: space-between;
             align-items: center;
             gap: 12px;
-            margin-bottom: 14px;
-            color: #dbedf6;
+            background: rgba(16, 27, 52, 0.9);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            margin-bottom: 12px;
         }
 
-        .brand {
+        .topbar h2 {
+            margin: 0;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 20px;
+            letter-spacing: .04em;
+        }
+
+        .chips {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 700;
-            letter-spacing: 0.25px;
-        }
-
-        .brand-mark {
-            width: 30px;
-            height: 30px;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #0fa58c, #f4a31b);
-            box-shadow: 0 0 0 3px rgba(15, 165, 140, 0.2);
-        }
-
-        .socket-chip {
-            padding: 8px 11px;
-            border-radius: 999px;
-            border: 1px solid rgba(167, 205, 228, 0.26);
-            font-size: 12px;
-            background: rgba(10, 32, 50, 0.65);
-            display: inline-flex;
-            align-items: center;
+            flex-wrap: wrap;
             gap: 8px;
         }
 
-        .socket-chip::before {
-            content: "";
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--error);
-        }
-
-        .socket-chip.ok::before {
-            background: var(--ok);
-        }
-
-        .hero {
-            background: var(--surface);
+        .chip {
             border: 1px solid var(--line);
-            border-radius: 20px;
-            box-shadow: var(--shadow);
-            padding: 24px;
-            margin-bottom: 14px;
-            animation: lift .44s ease both;
-        }
-
-        .hero h1 {
-            margin: 0;
-            font-size: clamp(28px, 4vw, 42px);
-            letter-spacing: -0.5px;
-        }
-
-        .hero p {
-            margin: 10px 0 14px;
-            color: var(--muted);
-            max-width: 820px;
-            line-height: 1.55;
-        }
-
-        .hero-badges {
-            display: flex;
-            gap: 9px;
-            flex-wrap: wrap;
-        }
-
-        .hero-badge {
-            padding: 7px 11px;
-            font-size: 12px;
             border-radius: 999px;
-            background: #d8f4ee;
-            border: 1px solid #bae7dc;
-            color: #0b5b51;
+            padding: 7px 11px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: var(--muted);
+            background: rgba(9, 19, 40, 0.8);
             font-weight: 700;
         }
 
-        .layout {
+        .chip.ok {
+            color: var(--ok);
+            border-color: rgba(88, 231, 171, 0.35);
+        }
+
+        .chip.bad {
+            color: var(--error);
+            border-color: rgba(255, 113, 108, 0.35);
+        }
+
+        .metrics {
             display: grid;
-            grid-template-columns: minmax(510px, 1.25fr) minmax(300px, 0.75fr);
-            gap: 14px;
+            grid-template-columns: repeat(5, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
         }
 
-        .card {
-            background: var(--surface-2);
+        .metric {
             border: 1px solid var(--line);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            padding: 16px;
-            animation: lift .44s ease both;
+            border-radius: var(--radius);
+            background: linear-gradient(160deg, rgba(16, 27, 52, .95), rgba(11, 21, 48, .95));
+            padding: 12px;
         }
 
-        .card h2 {
-            margin: 0 0 13px;
-            font-size: 19px;
-            letter-spacing: -0.2px;
+        .metric .k {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            color: var(--muted);
+            font-weight: 700;
+            margin-bottom: 6px;
         }
 
-        .card h3 {
+        .metric .v {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 26px;
+            line-height: 1;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .metric.warn .v { color: var(--warning); }
+        .metric.error .v { color: var(--error); }
+        .metric.ok .v { color: var(--secondary); }
+
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(16, 27, 52, .92);
+            padding: 12px;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.15fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .panel h3 {
             margin: 0 0 10px;
-            font-size: 16px;
-        }
-
-        .left-stack .card + .card {
-            margin-top: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: var(--primary);
+            font-weight: 700;
         }
 
         .field-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            grid-template-columns: repeat(2, minmax(120px, 1fr));
             gap: 10px;
         }
 
         label {
             display: block;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .12em;
             margin-bottom: 5px;
-            font-size: 12px;
             font-weight: 700;
-            color: #365069;
         }
 
-        input,
-        textarea,
-        select {
+        input, textarea, select {
             width: 100%;
-            border: 1px solid #c3d3df;
-            border-radius: 10px;
-            padding: 10px 11px;
-            font-size: 14px;
-            font-family: "Sora", sans-serif;
-            color: var(--ink);
-            transition: border-color .2s ease, box-shadow .2s ease;
-            background: #fcfeff;
+            border: 1px solid #314066;
+            border-radius: 8px;
+            background: #0d1731;
+            color: var(--text);
+            padding: 9px 10px;
+            font-size: 13px;
+            font-family: "Inter", sans-serif;
         }
 
         textarea {
-            min-height: 102px;
+            min-height: 96px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             resize: vertical;
-            font-family: "JetBrains Mono", Consolas, monospace;
-            font-size: 12px;
         }
 
-        input:focus,
-        textarea:focus,
-        select:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
-            border-color: #0fa58c;
-            box-shadow: 0 0 0 3px var(--glow);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(129, 236, 255, .18);
         }
 
-        .checkbox-row {
+        .check-row {
             display: flex;
-            gap: 8px;
             align-items: center;
-            margin-top: 10px;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--muted);
         }
 
-        .checkbox-row input {
+        .check-row input {
             width: auto;
             transform: translateY(1px);
-        }
-
-        .checkbox-row label {
-            margin: 0;
-            font-size: 13px;
-            font-weight: 600;
         }
 
         .actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 9px;
-            margin-top: 12px;
+            gap: 8px;
+            margin-top: 11px;
         }
 
-        button {
+        .actions button {
             border: 0;
-            border-radius: 10px;
-            padding: 10px 13px;
-            font-size: 13px;
-            font-weight: 700;
+            border-radius: 8px;
+            padding: 9px 12px;
             cursor: pointer;
-            transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
-            font-family: "Sora", sans-serif;
-        }
-
-        button:hover {
-            transform: translateY(-1px);
-        }
-
-        button:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-            transform: none;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 800;
+            transition: .16s ease;
         }
 
         .btn-primary {
-            color: #ffffff;
-            background: linear-gradient(135deg, var(--brand), var(--brand-2));
-            box-shadow: 0 10px 20px rgba(8, 124, 109, 0.25);
+            background: linear-gradient(140deg, var(--primary), var(--primary-strong));
+            color: #003d48;
         }
 
         .btn-soft {
-            color: #1c3b54;
-            background: #e6eef4;
+            background: #233355;
+            color: var(--text);
         }
 
-        .btn-warn {
-            color: #3a2900;
-            background: var(--warn);
+        .btn-danger {
+            background: rgba(255, 113, 108, .2);
+            color: #ffc4bf;
+            border: 1px solid rgba(255, 113, 108, .36);
         }
 
-        .status-line {
+        .actions button:hover { transform: translateY(-1px); }
+        .actions button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+        .status {
             margin-top: 10px;
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-        .scenario-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .scenario-buttons button {
-            font-size: 12px;
-            padding: 8px 10px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(110px, 1fr));
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .stat {
-            border: 1px solid #d0dce6;
-            border-radius: 12px;
-            padding: 10px;
-            background: linear-gradient(170deg, #fbfefe, #f1f8fb);
-        }
-
-        .stat .label {
             font-size: 12px;
             color: var(--muted);
-        }
-
-        .stat .value {
-            font-weight: 700;
-            font-size: 24px;
-            margin-top: 3px;
-        }
-
-        .feed-card {
-            display: flex;
-            flex-direction: column;
-            min-height: 640px;
-        }
-
-        .feed-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-
-        .endpoint {
-            font-family: "JetBrains Mono", monospace;
-            font-size: 11px;
-            border: 1px solid #cad7e3;
-            border-radius: 9px;
-            padding: 5px 7px;
-            background: #f5f9fc;
-            color: #234762;
+            min-height: 20px;
         }
 
         .feed {
-            flex: 1;
+            min-height: 180px;
+            max-height: 300px;
             overflow: auto;
-            border-radius: 12px;
-            border: 1px solid rgba(152, 186, 215, 0.28);
-            background: linear-gradient(165deg, #08121e 0%, #132235 100%);
-            color: #e6eef8;
-            padding: 12px;
-            font-family: "JetBrains Mono", Consolas, monospace;
+            border-radius: 8px;
+            border: 1px solid #2c3856;
+            background: linear-gradient(180deg, #0b1428, #081121);
+            padding: 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 12px;
-            line-height: 1.5;
+            line-height: 1.45;
         }
 
         .feed-line {
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-            border-bottom: 1px dashed var(--console-line);
-            word-break: break-word;
+            border-bottom: 1px dashed rgba(154, 169, 200, .2);
+            padding: 5px 0;
             white-space: pre-wrap;
+            word-break: break-word;
         }
 
-        .feed-line:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: 0;
+        .feed-line:last-child { border-bottom: 0; }
+        .feed-line.success { color: #88f6cb; }
+        .feed-line.error { color: #ffb1ae; }
+
+        .section {
+            display: none;
+            animation: fade .2s ease;
         }
 
-        .feed-line.info {
-            color: #d4e2f2;
-        }
+        .section.active { display: block; }
 
-        .feed-line.success {
-            color: #88f0cb;
-        }
-
-        .feed-line.error {
-            color: #ff95ab;
-        }
-
-        .feed-controls {
-            margin-top: 10px;
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .timeline {
-            margin-top: 12px;
-            border: 1px solid #d0dce6;
-            border-radius: 11px;
-            background: #f6fbfd;
-            padding: 10px;
-            min-height: 120px;
-            font-size: 13px;
-            color: #1c3b54;
-        }
-
-        .timeline-item {
-            padding: 6px 0;
-            border-bottom: 1px dashed #cbd9e4;
-        }
-
-        .timeline-item:last-child {
-            border-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .muted {
-            color: var(--muted);
+        table {
+            width: 100%;
+            border-collapse: collapse;
             font-size: 12px;
         }
 
-        @keyframes lift {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        th, td {
+            border-bottom: 1px solid rgba(154, 169, 200, .16);
+            padding: 9px 8px;
+            text-align: left;
+            vertical-align: top;
         }
 
-        @media (max-width: 1040px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
+        th {
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-weight: 700;
+        }
 
-            .feed-card {
-                min-height: 420px;
+        .tag {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 4px 7px;
+            font-size: 10px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .tag.ok { color: #88f6cb; background: rgba(88, 231, 171, .14); border-color: rgba(88, 231, 171, .3); }
+        .tag.pending { color: #b7eaff; background: rgba(129, 236, 255, .14); border-color: rgba(129, 236, 255, .3); }
+        .tag.retry { color: #ffd595; background: rgba(255, 177, 72, .14); border-color: rgba(255, 177, 72, .32); }
+        .tag.dead { color: #ffc4bf; background: rgba(255, 113, 108, .14); border-color: rgba(255, 113, 108, .32); }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px;
+        }
+
+        .muted { color: var(--muted); }
+
+        @keyframes fade {
+            from { opacity: .0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 1160px) {
+            .metrics { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+            .layout-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 880px) {
+            .app { grid-template-columns: 1fr; }
+            .side {
+                position: static;
+                height: auto;
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
             }
+            .main { padding: 12px; }
+            .topbar { flex-direction: column; align-items: flex-start; }
+            .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+            .field-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-<div class="grain"></div>
-<main class="container">
-    <div class="topbar">
+<div class="app">
+    <aside class="side">
         <div class="brand">
-            <span class="brand-mark"></span>
-            <span>Real-Time Notification Ops Console</span>
+            <span class="mark"></span>
+            <div>
+                <h1>SYSTEM_MONITOR</h1>
+                <p>Status: Live Streaming</p>
+            </div>
         </div>
-        <div id="socketChip" class="socket-chip">WebSocket disconnected</div>
-    </div>
 
-    <section class="hero">
-        <h1>Run, Test, and Observe Your Notification Pipeline</h1>
-        <p>Operate the complete flow from a single screen: connect WebSocket sessions, publish API events with idempotency keys,
-            monitor queue and delivery stats, and inspect an execution log in real time.</p>
-        <div class="hero-badges">
-            <span class="hero-badge">Live STOMP Stream</span>
-            <span class="hero-badge">Idempotency Validation</span>
-            <span class="hero-badge">Rate-Limit Visibility</span>
-            <span class="hero-badge">Ops-Friendly Timeline</span>
+        <nav class="menu">
+            <button class="active" data-tab="dashboard">Dashboard</button>
+            <button data-tab="stream">Event Stream</button>
+            <button data-tab="failures">Failure & DLQ</button>
+        </nav>
+
+        <div class="meta">
+            <div>Session: Cookie/API Key</div>
+            <div>Socket: STOMP over /ws</div>
+            <div>Refresh: 8 seconds</div>
         </div>
-    </section>
+    </aside>
 
-    <section class="layout">
-        <div class="left-stack">
-            <article class="card">
-                <h2>Access & Session</h2>
-                <div class="field-grid">
-                    <div>
-                        <label for="apiKey">API Key</label>
-                        <input id="apiKey" autocomplete="off" placeholder="Paste Render API_KEY" value="">
-                    </div>
-                    <div>
-                        <label for="userId">User ID</label>
-                        <input id="userId" value="user-42" autocomplete="off">
-                    </div>
-                    <div>
-                        <label for="idempotencyKey">Idempotency Key</label>
-                        <input id="idempotencyKey" value="demo-user-42-1" autocomplete="off">
-                    </div>
-                </div>
+    <main class="main">
+        <header class="topbar">
+            <h2>OBSERVATORY_CORE</h2>
+            <div class="chips">
+                <span id="sessionChip" class="chip bad">Session Offline</span>
+                <span id="socketChip" class="chip bad">Socket Disconnected</span>
+            </div>
+        </header>
 
-                <div class="checkbox-row">
-                    <input id="autoKey" type="checkbox" checked>
-                    <label for="autoKey">Auto-generate idempotency key on each publish</label>
-                </div>
+        <section class="metrics">
+            <article class="metric"><div class="k">Total Events</div><div id="mTotal" class="v">-</div></article>
+            <article class="metric ok"><div class="k">Success Rate</div><div id="mSuccessRate" class="v">-</div></article>
+            <article class="metric"><div class="k">Throughput/s (5m)</div><div id="mThroughput" class="v">-</div></article>
+            <article class="metric warn"><div class="k">Retry Scheduled</div><div id="mRetry" class="v">-</div></article>
+            <article class="metric error"><div class="k">Dead Letter</div><div id="mDead" class="v">-</div></article>
+        </section>
 
-                <div class="actions">
-                    <button class="btn-primary" id="startSessionBtn">Start Session</button>
-                    <button class="btn-soft" id="endSessionBtn">End Session</button>
-                    <button class="btn-primary" id="connectBtn">Connect WebSocket</button>
-                    <button class="btn-soft" id="disconnectBtn">Disconnect</button>
-                    <button class="btn-warn" id="statsBtn">Fetch Stats</button>
-                    <button class="btn-soft" id="smokeBtn">Run E2E Smoke</button>
-                </div>
-                <div class="status-line" id="sessionSummary">Ready. Start session once, then connect.</div>
-            </article>
-
-            <article class="card">
-                <h2>Publish Notification</h2>
-                <div class="field-grid">
-                    <div>
-                        <label for="eventType">Event Type</label>
-                        <input id="eventType" value="ORDER_STATUS">
+        <section id="tab-dashboard" class="section active">
+            <div class="layout-grid">
+                <article class="panel">
+                    <h3>Command Center</h3>
+                    <div class="field-grid">
+                        <div>
+                            <label for="apiKey">API Key</label>
+                            <input id="apiKey" autocomplete="off" placeholder="Paste API key for one-time login"/>
+                        </div>
+                        <div>
+                            <label for="userId">User ID</label>
+                            <input id="userId" value="user-42" autocomplete="off"/>
+                        </div>
+                        <div>
+                            <label for="idempotencyKey">Idempotency Key</label>
+                            <input id="idempotencyKey" value="demo-user-42-1" autocomplete="off"/>
+                        </div>
+                        <div>
+                            <label for="eventType">Event Type</label>
+                            <select id="eventType">
+                                <option value="ORDER_STATUS">ORDER_STATUS</option>
+                                <option value="PAYMENT_UPDATE">PAYMENT_UPDATE</option>
+                                <option value="SECURITY_ALERT">SECURITY_ALERT</option>
+                                <option value="CHAT_MESSAGE">CHAT_MESSAGE</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
+
+                    <div style="margin-top: 10px;">
                         <label for="message">Message</label>
-                        <input id="message" value="Your order is out for delivery">
+                        <input id="message" value="Your order is out for delivery"/>
                     </div>
-                </div>
 
-                <div style="margin-top: 10px;">
-                    <label for="metadata">Metadata JSON</label>
-                    <textarea id="metadata">{"orderId":"8843","etaMinutes":"18"}</textarea>
-                </div>
+                    <div style="margin-top: 10px;">
+                        <label for="metadata">Metadata JSON</label>
+                        <textarea id="metadata">{
+  "orderId": "8843",
+  "etaMinutes": "18"
+}</textarea>
+                    </div>
 
-                <div class="actions">
-                    <button class="btn-primary" id="sendBtn">Send Notification</button>
-                    <button class="btn-soft" id="burstBtn">Send 5-Event Burst</button>
-                    <button class="btn-soft" id="repeatBtn">Replay Last Payload</button>
+                    <div class="check-row">
+                        <input id="autoKey" type="checkbox" checked/>
+                        <span>Auto-generate idempotency key for each publish</span>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn-primary" id="startSessionBtn">Start Session</button>
+                        <button class="btn-soft" id="endSessionBtn">End Session</button>
+                        <button class="btn-primary" id="connectBtn">Connect Socket</button>
+                        <button class="btn-soft" id="disconnectBtn">Disconnect</button>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn-primary" id="sendBtn">Send Notification</button>
+                        <button class="btn-soft" id="burstBtn">Send Burst x5</button>
+                        <button class="btn-soft" id="repeatBtn">Replay Last</button>
+                        <button class="btn-danger" id="smokeBtn">Smoke Flow</button>
+                    </div>
+
+                    <div id="statusLine" class="status">Ready. Start a session, connect socket, then publish.</div>
+                </article>
+
+                <article class="panel">
+                    <h3>Operations Feed</h3>
+                    <div id="feed" class="feed"></div>
+                    <div class="actions" style="margin-top: 10px;">
+                        <button class="btn-soft" id="refreshBtn">Refresh Data</button>
+                        <button class="btn-soft" id="statsBtn">Fetch Stats</button>
+                        <button class="btn-soft" id="clearFeedBtn">Clear Feed</button>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section id="tab-stream" class="section">
+            <article class="panel">
+                <h3>Recent Event Stream</h3>
+                <div class="muted" style="margin-bottom: 10px;">Endpoint: GET /api/notifications/recent-events?limit=30</div>
+                <div style="overflow:auto;">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Status</th>
+                            <th>Target User</th>
+                            <th>Type</th>
+                            <th>Attempts</th>
+                            <th>Timestamp</th>
+                        </tr>
+                        </thead>
+                        <tbody id="recentEventsBody"></tbody>
+                    </table>
                 </div>
             </article>
+        </section>
 
-            <article class="card">
-                <h2>Scenario Presets</h2>
-                <div class="scenario-buttons">
-                    <button class="btn-soft" data-scenario="order">Order Update</button>
-                    <button class="btn-soft" data-scenario="payment">Payment Alert</button>
-                    <button class="btn-soft" data-scenario="security">Security Alert</button>
-                    <button class="btn-soft" data-scenario="chat">Chat Message</button>
-                </div>
-                <p class="muted" style="margin-top: 10px;">Presets only update fields locally; click Send Notification to publish.</p>
-            </article>
-        </div>
-
-        <div class="right-stack">
-            <article class="card">
-                <h2>System Stats</h2>
-                <div class="stats-grid">
-                    <div class="stat">
-                        <div class="label">Pending Queue</div>
-                        <div id="statPending" class="value">-</div>
-                    </div>
-                    <div class="stat">
-                        <div class="label">Delivered</div>
-                        <div id="statDelivered" class="value">-</div>
-                    </div>
-                    <div class="stat">
-                        <div class="label">Dead Letter</div>
-                        <div id="statDead" class="value">-</div>
-                    </div>
-                    <div class="stat">
-                        <div class="label">Connected Users</div>
-                        <div id="statConnected" class="value">-</div>
-                    </div>
-                </div>
-                <div class="muted">Stats endpoint: GET /api/notifications/system-stats</div>
-                <div id="timeline" class="timeline"></div>
-            </article>
-
-            <article class="card feed-card">
-                <div class="feed-header">
-                    <h2 style="margin: 0;">Live Operations Feed</h2>
-                    <span class="endpoint">/user/queue/notifications</span>
-                </div>
-                <div id="feed" class="feed"></div>
-                <div class="feed-controls">
-                    <button class="btn-soft" id="clearFeedBtn">Clear Feed</button>
-                    <button class="btn-soft" id="copyFeedBtn">Copy Feed</button>
+        <section id="tab-failures" class="section">
+            <article class="panel">
+                <h3>Failure & DLQ Viewer</h3>
+                <div class="muted" style="margin-bottom: 10px;">Endpoint: GET /api/notifications/failures?limit=40</div>
+                <div style="overflow:auto;">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Status</th>
+                            <th>Reason</th>
+                            <th>Attempts</th>
+                            <th>Updated</th>
+                        </tr>
+                        </thead>
+                        <tbody id="failuresBody"></tbody>
+                    </table>
                 </div>
             </article>
-        </div>
-    </section>
-</main>
+        </section>
+    </main>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
 <script>
     const storageKeys = {
-        apiKey: "notif-demo-api-key",
-        userId: "notif-demo-user-id"
+        apiKey: "notif-ui-api-key",
+        userId: "notif-ui-user-id"
     };
 
     const state = {
+        sessionAuthenticated: false,
         stompClient: null,
-        connectedUserId: null,
+        connectedUser: null,
+        refreshTimer: null,
         lastPayload: null,
-        statsTimer: null,
-        burstRunning: false,
         smokeRunning: false,
-        sessionAuthenticated: false
+        burstRunning: false
     };
 
-    const MAX_FEED_LINES = 180;
-
-    const elements = {
+    const el = {
         apiKey: document.getElementById("apiKey"),
         userId: document.getElementById("userId"),
         idempotencyKey: document.getElementById("idempotencyKey"),
@@ -602,138 +621,63 @@
         eventType: document.getElementById("eventType"),
         message: document.getElementById("message"),
         metadata: document.getElementById("metadata"),
+        statusLine: document.getElementById("statusLine"),
         feed: document.getElementById("feed"),
+        sessionChip: document.getElementById("sessionChip"),
         socketChip: document.getElementById("socketChip"),
-        sessionSummary: document.getElementById("sessionSummary"),
-        timeline: document.getElementById("timeline"),
-        statPending: document.getElementById("statPending"),
-        statDelivered: document.getElementById("statDelivered"),
-        statDead: document.getElementById("statDead"),
-        statConnected: document.getElementById("statConnected")
+        recentEventsBody: document.getElementById("recentEventsBody"),
+        failuresBody: document.getElementById("failuresBody"),
+        mTotal: document.getElementById("mTotal"),
+        mSuccessRate: document.getElementById("mSuccessRate"),
+        mThroughput: document.getElementById("mThroughput"),
+        mRetry: document.getElementById("mRetry"),
+        mDead: document.getElementById("mDead")
     };
 
-    const scenarios = {
-        order: {
-            type: "ORDER_STATUS",
-            message: "Order #8843 reached fulfillment center",
-            metadata: { orderId: "8843", stage: "FULFILLMENT", etaMinutes: "32" }
-        },
-        payment: {
-            type: "PAYMENT_UPDATE",
-            message: "Payment approved and invoice generated",
-            metadata: { invoiceId: "INV-1201", amount: "219.00", currency: "USD" }
-        },
-        security: {
-            type: "SECURITY_ALERT",
-            message: "New login detected from Bengaluru",
-            metadata: { riskScore: "LOW", device: "Chrome", action: "VERIFY" }
-        },
-        chat: {
-            type: "CHAT_MESSAGE",
-            message: "You have a new message from support",
-            metadata: { roomId: "support-14", priority: "normal" }
-        }
-    };
+    const MAX_FEED_LINES = 180;
 
     function nowLabel() {
         return new Date().toLocaleTimeString();
     }
 
-    function shortJson(value) {
-        try {
-            return JSON.stringify(value);
-        } catch (error) {
-            return String(value);
+    function fmtTime(value) {
+        if (!value) return "-";
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
+    }
+
+    function short(text, max = 84) {
+        if (!text) return "-";
+        return text.length <= max ? text : text.slice(0, max - 1) + "…";
+    }
+
+    function addFeed(message, kind = "info") {
+        const node = document.createElement("div");
+        node.className = `feed-line ${kind}`;
+        node.textContent = `[${nowLabel()}] ${message}`;
+        el.feed.prepend(node);
+        while (el.feed.children.length > MAX_FEED_LINES) {
+            el.feed.lastChild.remove();
         }
     }
 
-    function addFeed(message, kind) {
-        const line = document.createElement("div");
-        line.className = `feed-line ${kind || "info"}`;
-        line.textContent = `[${nowLabel()}] ${message}`;
-        elements.feed.prepend(line);
-
-        while (elements.feed.children.length > MAX_FEED_LINES) {
-            elements.feed.removeChild(elements.feed.lastChild);
-        }
+    function setStatus(text) {
+        el.statusLine.textContent = text;
     }
 
-    function addTimeline(message) {
-        const item = document.createElement("div");
-        item.className = "timeline-item";
-        item.textContent = `[${nowLabel()}] ${message}`;
-        elements.timeline.prepend(item);
-        while (elements.timeline.children.length > 7) {
-            elements.timeline.removeChild(elements.timeline.lastChild);
-        }
+    function setSessionChip(active) {
+        el.sessionChip.className = `chip ${active ? "ok" : "bad"}`;
+        el.sessionChip.textContent = active ? "Session Online" : "Session Offline";
     }
 
-    function setSocketState(isConnected, userId) {
-        elements.socketChip.className = `socket-chip ${isConnected ? "ok" : ""}`;
-        elements.socketChip.textContent = isConnected
-            ? `WebSocket connected as ${userId}`
-            : "WebSocket disconnected";
-    }
-
-    function setSessionSummary(text) {
-        elements.sessionSummary.textContent = text;
-    }
-
-    function saveSessionInputs() {
-        if (elements.apiKey.value.trim()) {
-            localStorage.setItem(storageKeys.apiKey, elements.apiKey.value.trim());
-        }
-        localStorage.setItem(storageKeys.userId, elements.userId.value.trim());
-    }
-
-    function hydrateSessionInputs() {
-        const savedKey = localStorage.getItem(storageKeys.apiKey);
-        const savedUser = localStorage.getItem(storageKeys.userId);
-        if (savedKey) {
-            elements.apiKey.value = savedKey;
-        }
-        if (savedUser) {
-            elements.userId.value = savedUser;
-        }
-    }
-
-    function parseMetadata() {
-        try {
-            return JSON.parse(elements.metadata.value || "{}");
-        } catch (error) {
-            addFeed("Metadata JSON is invalid", "error");
-            throw error;
-        }
-    }
-
-    function buildPayload() {
-        const userId = elements.userId.value.trim();
-        if (!userId) {
-            addFeed("User ID is required", "error");
-            throw new Error("Missing user ID");
-        }
-
-        const payload = {
-            userId,
-            type: elements.eventType.value.trim() || "ORDER_STATUS",
-            message: elements.message.value.trim() || "Notification",
-            idempotencyKey: elements.idempotencyKey.value.trim(),
-            metadata: parseMetadata()
-        };
-
-        if (elements.autoKey.checked) {
-            payload.idempotencyKey = `demo-${userId}-${Date.now()}`;
-            elements.idempotencyKey.value = payload.idempotencyKey;
-        }
-
-        return payload;
+    function setSocketChip(active, userId) {
+        el.socketChip.className = `chip ${active ? "ok" : "bad"}`;
+        el.socketChip.textContent = active ? `Socket Connected (${userId})` : "Socket Disconnected";
     }
 
     async function parseResponse(response) {
         const text = await response.text();
-        if (!text) {
-            return null;
-        }
+        if (!text) return null;
         try {
             return JSON.parse(text);
         } catch (error) {
@@ -741,31 +685,46 @@
         }
     }
 
-    function headersWithApiKey() {
-        const headers = { "Content-Type": "application/json" };
-        if (state.sessionAuthenticated) {
-            return headers;
+    function saveInputs() {
+        localStorage.setItem(storageKeys.userId, el.userId.value.trim());
+        const key = el.apiKey.value.trim();
+        if (key) {
+            localStorage.setItem(storageKeys.apiKey, key);
         }
+    }
 
-        const apiKey = elements.apiKey.value.trim();
-        if (!apiKey) {
-            addFeed("API key is required", "error");
-            throw new Error("Missing API key");
-        }
-
-        headers["X-API-KEY"] = apiKey;
-        return headers;
+    function restoreInputs() {
+        const userId = localStorage.getItem(storageKeys.userId);
+        const apiKey = localStorage.getItem(storageKeys.apiKey);
+        if (userId) el.userId.value = userId;
+        if (apiKey) el.apiKey.value = apiKey;
     }
 
     function clearSavedApiKey() {
         localStorage.removeItem(storageKeys.apiKey);
-        elements.apiKey.value = "";
+        el.apiKey.value = "";
+    }
+
+    function authHeaders() {
+        if (state.sessionAuthenticated) {
+            return { "Content-Type": "application/json" };
+        }
+
+        const apiKey = el.apiKey.value.trim();
+        if (!apiKey) {
+            throw new Error("Missing API key. Start session or provide API key.");
+        }
+
+        return {
+            "Content-Type": "application/json",
+            "X-API-KEY": apiKey
+        };
     }
 
     async function startSession() {
-        const apiKey = elements.apiKey.value.trim();
+        const apiKey = el.apiKey.value.trim();
         if (!apiKey) {
-            addFeed("Paste API key once to start session", "error");
+            addFeed("API key is required for session login", "error");
             return;
         }
 
@@ -776,30 +735,29 @@
             });
             const data = await parseResponse(response);
             if (!response.ok) {
-                addFeed(`POST /api/session/login -> ${response.status} ${shortJson(data)}`, "error");
-                setSessionSummary("Session start failed. Check API key.");
+                addFeed(`Session login failed -> ${response.status} ${JSON.stringify(data)}`, "error");
                 return;
             }
 
             state.sessionAuthenticated = true;
-            addFeed("Session started successfully. API key no longer needed for each request.", "success");
-            addTimeline("Cookie session started");
-            setSessionSummary("Session active via secure cookie. Connect and publish freely.");
+            setSessionChip(true);
+            setStatus("Session authenticated via secure cookie.");
             clearSavedApiKey();
+            addFeed("Session started", "success");
+            await refreshAll();
         } catch (error) {
-            addFeed(`Session start failed: ${error.message}`, "error");
+            addFeed(`Session start error: ${error.message}`, "error");
         }
     }
 
     async function endSession() {
         try {
             await fetch("/api/session/logout", { method: "POST" });
+        } finally {
             state.sessionAuthenticated = false;
+            setSessionChip(false);
+            setStatus("Session ended. Use API key or start new session.");
             addFeed("Session ended", "info");
-            addTimeline("Cookie session ended");
-            setSessionSummary("Session ended. Paste API key to start a new session.");
-        } catch (error) {
-            addFeed(`Session end failed: ${error.message}`, "error");
         }
     }
 
@@ -807,87 +765,192 @@
         try {
             const response = await fetch("/api/session/status");
             const data = await parseResponse(response);
-            if (response.ok && data && data.authenticated === true) {
-                state.sessionAuthenticated = true;
-                setSessionSummary("Session active via secure cookie. Connect and publish freely.");
-                addFeed("Existing session restored from cookie", "success");
-            } else {
-                state.sessionAuthenticated = false;
-                setSessionSummary("Ready. Start session once, then connect.");
-            }
+            state.sessionAuthenticated = Boolean(data && data.authenticated === true);
         } catch (error) {
             state.sessionAuthenticated = false;
-            setSessionSummary("Ready. Start session once, then connect.");
+        }
+        setSessionChip(state.sessionAuthenticated);
+    }
+
+    function statusTag(status) {
+        if (status === "DELIVERED") return "ok";
+        if (status === "RETRY_SCHEDULED") return "retry";
+        if (status === "DEAD_LETTER") return "dead";
+        return "pending";
+    }
+
+    async function fetchOverview() {
+        try {
+            const response = await fetch("/api/notifications/overview", {
+                headers: state.sessionAuthenticated ? {} : { "X-API-KEY": el.apiKey.value.trim() }
+            });
+            const data = await parseResponse(response);
+            if (!response.ok) {
+                addFeed(`Overview failed -> ${response.status}`, "error");
+                return;
+            }
+
+            el.mTotal.textContent = data.totalEvents;
+            el.mSuccessRate.textContent = `${Number(data.successRatePercent || 0).toFixed(1)}%`;
+            el.mThroughput.textContent = Number(data.throughputPerSecondLastFiveMinutes || 0).toFixed(1);
+            el.mRetry.textContent = data.retryScheduled;
+            el.mDead.textContent = data.deadLetter;
+        } catch (error) {
+            addFeed(`Overview error: ${error.message}`, "error");
         }
     }
 
-    async function fetchStats(showFeedMessage) {
+    async function fetchRecentEvents(limit = 30) {
         try {
-            const response = await fetch("/api/notifications/system-stats", {
-                method: "GET",
-                headers: state.sessionAuthenticated ? {} : { "X-API-KEY": elements.apiKey.value.trim() }
+            const response = await fetch(`/api/notifications/recent-events?limit=${limit}`, {
+                headers: state.sessionAuthenticated ? {} : { "X-API-KEY": el.apiKey.value.trim() }
             });
             const data = await parseResponse(response);
+            if (!response.ok || !Array.isArray(data)) {
+                addFeed(`Recent events failed -> ${response.status}`, "error");
+                return;
+            }
 
+            el.recentEventsBody.innerHTML = "";
+            if (data.length === 0) {
+                el.recentEventsBody.innerHTML = `<tr><td colspan="6" class="muted">No events yet.</td></tr>`;
+                return;
+            }
+
+            data.forEach((row) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="mono">${row.notificationId || "-"}</td>
+                    <td><span class="tag ${statusTag(row.status)}">${row.status || "-"}</span></td>
+                    <td>${row.userId || "-"}</td>
+                    <td>${row.type || "-"}</td>
+                    <td>${row.attempts ?? 0}</td>
+                    <td>${fmtTime(row.createdAt)}</td>
+                `;
+                el.recentEventsBody.appendChild(tr);
+            });
+        } catch (error) {
+            addFeed(`Recent events error: ${error.message}`, "error");
+        }
+    }
+
+    async function fetchFailures(limit = 40) {
+        try {
+            const response = await fetch(`/api/notifications/failures?limit=${limit}`, {
+                headers: state.sessionAuthenticated ? {} : { "X-API-KEY": el.apiKey.value.trim() }
+            });
+            const data = await parseResponse(response);
+            if (!response.ok || !Array.isArray(data)) {
+                addFeed(`Failures endpoint failed -> ${response.status}`, "error");
+                return;
+            }
+
+            el.failuresBody.innerHTML = "";
+            if (data.length === 0) {
+                el.failuresBody.innerHTML = `<tr><td colspan="5" class="muted">No retry or DLQ records currently.</td></tr>`;
+                return;
+            }
+
+            data.forEach((row) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="mono">${row.notificationId || "-"}</td>
+                    <td><span class="tag ${statusTag(row.status)}">${row.status || "-"}</span></td>
+                    <td title="${(row.failedReason || "").replace(/"/g, '&quot;')}">${short(row.failedReason || "-")}</td>
+                    <td>${row.attempts ?? 0}</td>
+                    <td>${fmtTime(row.updatedAt)}</td>
+                `;
+                el.failuresBody.appendChild(tr);
+            });
+        } catch (error) {
+            addFeed(`Failures error: ${error.message}`, "error");
+        }
+    }
+
+    async function fetchStats() {
+        try {
+            const response = await fetch("/api/notifications/system-stats", {
+                headers: state.sessionAuthenticated ? {} : { "X-API-KEY": el.apiKey.value.trim() }
+            });
+            const data = await parseResponse(response);
             if (!response.ok) {
-                addFeed(`GET /api/notifications/system-stats -> ${response.status} ${shortJson(data)}`, "error");
+                addFeed(`Stats failed -> ${response.status} ${JSON.stringify(data)}`, "error");
                 return null;
             }
-
-            elements.statPending.textContent = data.pendingQueue;
-            elements.statDelivered.textContent = data.delivered;
-            elements.statDead.textContent = data.deadLetter;
-            elements.statConnected.textContent = data.connectedUsers;
-            addTimeline(`Stats updated: queue=${data.pendingQueue}, delivered=${data.delivered}`);
-
-            if (showFeedMessage) {
-                addFeed(`GET /api/notifications/system-stats -> 200 ${shortJson(data)}`, "success");
-            }
+            addFeed(`Stats: pending=${data.pendingQueue}, delivered=${data.delivered}, deadLetter=${data.deadLetter}, connected=${data.connectedUsers}`, "success");
             return data;
         } catch (error) {
-            addFeed(`Stats request failed: ${error.message}`, "error");
+            addFeed(`Stats error: ${error.message}`, "error");
             return null;
         }
     }
 
-    async function sendNotification(payloadOverride) {
-        const payload = payloadOverride || buildPayload();
-        state.lastPayload = payload;
-        saveSessionInputs();
+    function buildPayload() {
+        const userId = el.userId.value.trim();
+        if (!userId) {
+            throw new Error("User ID is required.");
+        }
 
+        let metadata = {};
         try {
+            metadata = JSON.parse(el.metadata.value || "{}");
+        } catch (error) {
+            throw new Error("Metadata JSON is invalid.");
+        }
+
+        let idempotencyKey = el.idempotencyKey.value.trim();
+        if (el.autoKey.checked) {
+            idempotencyKey = `ui-${userId}-${Date.now()}`;
+            el.idempotencyKey.value = idempotencyKey;
+        }
+
+        return {
+            userId,
+            type: el.eventType.value || "ORDER_STATUS",
+            message: el.message.value.trim() || "Notification",
+            idempotencyKey,
+            metadata
+        };
+    }
+
+    async function sendNotification(payloadOverride) {
+        try {
+            const payload = payloadOverride || buildPayload();
+            state.lastPayload = payload;
+            saveInputs();
+
             const response = await fetch("/api/notifications", {
                 method: "POST",
-                headers: headersWithApiKey(),
+                headers: authHeaders(),
                 body: JSON.stringify(payload)
             });
             const data = await parseResponse(response);
-            const kind = response.ok ? "success" : "error";
-            addFeed(`POST /api/notifications -> ${response.status} ${shortJson(data)}`, kind);
-            addTimeline(`Publish ${response.ok ? "accepted" : "failed"} for ${payload.type}`);
-            if (response.ok) {
-                await fetchStats(false);
+            if (!response.ok) {
+                addFeed(`Publish failed -> ${response.status} ${JSON.stringify(data)}`, "error");
+                return false;
             }
-            return response.ok;
+
+            addFeed(`Publish accepted -> id=${data.notificationId} duplicate=${data.duplicate}`, "success");
+            await refreshAll(false);
+            return true;
         } catch (error) {
-            addFeed(`Publish failed: ${error.message}`, "error");
+            addFeed(`Publish error: ${error.message}`, "error");
             return false;
         }
     }
 
-    async function connectWebSocket() {
-        const userId = elements.userId.value.trim();
+    async function connectSocket() {
+        const userId = el.userId.value.trim();
         if (!userId) {
-            addFeed("User ID is required before connecting", "error");
+            addFeed("User ID required before socket connect", "error");
             return;
         }
 
         if (state.stompClient && state.stompClient.active) {
-            if (state.connectedUserId === userId) {
-                addFeed("WebSocket already connected", "info");
+            if (state.connectedUser === userId) {
+                addFeed("Socket already connected for current user", "info");
                 return;
             }
-            addFeed(`Switching user from ${state.connectedUserId || "unknown"} to ${userId}`, "info");
             await state.stompClient.deactivate();
         }
 
@@ -898,159 +961,160 @@
             brokerURL,
             reconnectDelay: 3000,
             onConnect: () => {
-                state.connectedUserId = userId;
-                setSocketState(true, userId);
-                setSessionSummary(`Connected. User ${userId} subscribed to personal queue.`);
-                addFeed(`Connected to ${brokerURL}`, "success");
-                addTimeline(`WebSocket connected for ${userId}`);
-                state.stompClient.subscribe("/user/queue/notifications", (frame) => {
-                    addFeed(`Notification received -> ${frame.body}`, "success");
-                    addTimeline("Inbound notification received");
-                });
+                state.connectedUser = userId;
+                setSocketChip(true, userId);
+                setStatus(`Socket connected for ${userId}.`);
+                addFeed(`Socket connected -> ${brokerURL}`, "success");
 
-                if (state.statsTimer) {
-                    clearInterval(state.statsTimer);
-                }
-                state.statsTimer = setInterval(() => fetchStats(false), 15000);
-                fetchStats(false);
+                state.stompClient.subscribe("/user/queue/notifications", (frame) => {
+                    addFeed(`Inbound event -> ${frame.body}`, "success");
+                    fetchRecentEvents(30);
+                });
+            },
+            onWebSocketClose: () => {
+                state.connectedUser = null;
+                setSocketChip(false);
+                setStatus("Socket disconnected.");
+                addFeed("Socket disconnected", "error");
             },
             onStompError: (frame) => {
                 addFeed(`Broker error: ${frame.headers.message || "unknown"}`, "error");
-            },
-            onWebSocketClose: () => {
-                state.connectedUserId = null;
-                setSocketState(false);
-                setSessionSummary("Disconnected. Reconnect to receive live events.");
-                addFeed("WebSocket closed", "error");
-                addTimeline("WebSocket disconnected");
             }
         });
 
         state.stompClient.activate();
     }
 
-    async function disconnectWebSocket() {
+    async function disconnectSocket() {
         if (state.stompClient && state.stompClient.active) {
             await state.stompClient.deactivate();
-            addFeed("Disconnected by user", "info");
         }
-        setSocketState(false);
-        if (state.statsTimer) {
-            clearInterval(state.statsTimer);
-            state.statsTimer = null;
-        }
+        setSocketChip(false);
+        addFeed("Socket disconnected by user", "info");
     }
 
-    async function runSmokeTest() {
+    async function runSmokeFlow() {
         if (state.smokeRunning) {
-            addFeed("Smoke test already running", "error");
+            addFeed("Smoke flow already running", "error");
             return;
         }
 
         state.smokeRunning = true;
-        addFeed("Running smoke test: connect -> publish -> stats", "info");
+        addFeed("Smoke flow started: connect -> publish -> refresh", "info");
         try {
-            await connectWebSocket();
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            const ok = await sendNotification();
-            if (ok) {
-                await fetchStats(true);
-            }
+            await connectSocket();
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            await sendNotification();
+            await fetchStats();
+            await refreshAll(false);
         } finally {
             state.smokeRunning = false;
         }
     }
 
-    function applyScenario(scenarioKey) {
-        const scenario = scenarios[scenarioKey];
-        if (!scenario) {
-            return;
-        }
-        elements.eventType.value = scenario.type;
-        elements.message.value = scenario.message;
-        elements.metadata.value = JSON.stringify(scenario.metadata, null, 2);
-        addFeed(`Scenario applied: ${scenarioKey}`, "info");
-    }
-
-    document.getElementById("connectBtn").addEventListener("click", connectWebSocket);
-    document.getElementById("disconnectBtn").addEventListener("click", disconnectWebSocket);
-    document.getElementById("startSessionBtn").addEventListener("click", startSession);
-    document.getElementById("endSessionBtn").addEventListener("click", endSession);
-    document.getElementById("sendBtn").addEventListener("click", () => sendNotification());
-    document.getElementById("statsBtn").addEventListener("click", () => fetchStats(true));
-    document.getElementById("smokeBtn").addEventListener("click", runSmokeTest);
-
-    document.getElementById("burstBtn").addEventListener("click", async () => {
+    async function sendBurst() {
         if (state.burstRunning) {
-            addFeed("Burst already running", "error");
+            addFeed("Burst already in progress", "error");
             return;
         }
 
         state.burstRunning = true;
-        const burstButton = document.getElementById("burstBtn");
-        const previousLabel = burstButton.textContent;
-        burstButton.disabled = true;
-        burstButton.textContent = "Sending burst...";
+        const button = document.getElementById("burstBtn");
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Sending...";
 
-        const baseMessage = elements.message.value.replace(/\s\[\d+\/\d+\]$/, "");
-        elements.message.value = baseMessage;
-
-        addFeed("Sending 5-event burst", "info");
         try {
             for (let i = 0; i < 5; i += 1) {
                 const payload = buildPayload();
-                payload.message = `${baseMessage} [${i + 1}/5]`;
+                payload.message = `${payload.message} [${i + 1}/5]`;
                 await sendNotification(payload);
                 await new Promise((resolve) => setTimeout(resolve, 220));
             }
         } finally {
             state.burstRunning = false;
-            burstButton.disabled = false;
-            burstButton.textContent = previousLabel;
-            elements.message.value = baseMessage;
+            button.disabled = false;
+            button.textContent = originalText;
+            await refreshAll(false);
         }
+    }
+
+    async function refreshAll(logMessage = true) {
+        await Promise.all([
+            fetchOverview(),
+            fetchRecentEvents(30),
+            fetchFailures(40)
+        ]);
+
+        if (logMessage) {
+            addFeed("Dashboard data refreshed", "info");
+        }
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll(".menu button").forEach((button) => {
+            button.classList.toggle("active", button.dataset.tab === tab);
+        });
+
+        document.querySelectorAll(".section").forEach((section) => {
+            section.classList.toggle("active", section.id === `tab-${tab}`);
+        });
+    }
+
+    document.querySelectorAll(".menu button").forEach((button) => {
+        button.addEventListener("click", () => switchTab(button.dataset.tab));
     });
 
-    document.getElementById("repeatBtn").addEventListener("click", () => {
+    document.getElementById("startSessionBtn").addEventListener("click", startSession);
+    document.getElementById("endSessionBtn").addEventListener("click", endSession);
+    document.getElementById("connectBtn").addEventListener("click", connectSocket);
+    document.getElementById("disconnectBtn").addEventListener("click", disconnectSocket);
+    document.getElementById("sendBtn").addEventListener("click", () => sendNotification());
+    document.getElementById("burstBtn").addEventListener("click", sendBurst);
+    document.getElementById("smokeBtn").addEventListener("click", runSmokeFlow);
+    document.getElementById("refreshBtn").addEventListener("click", () => refreshAll(true));
+    document.getElementById("statsBtn").addEventListener("click", fetchStats);
+
+    document.getElementById("repeatBtn").addEventListener("click", async () => {
         if (!state.lastPayload) {
             addFeed("No previous payload to replay", "error");
             return;
         }
-        const replayPayload = { ...state.lastPayload, idempotencyKey: `replay-${Date.now()}` };
-        elements.idempotencyKey.value = replayPayload.idempotencyKey;
-        sendNotification(replayPayload);
+        const replay = { ...state.lastPayload, idempotencyKey: `replay-${Date.now()}` };
+        el.idempotencyKey.value = replay.idempotencyKey;
+        await sendNotification(replay);
     });
 
     document.getElementById("clearFeedBtn").addEventListener("click", () => {
-        elements.feed.innerHTML = "";
+        el.feed.innerHTML = "";
     });
 
-    document.getElementById("copyFeedBtn").addEventListener("click", async () => {
-        const text = Array.from(elements.feed.children).map((item) => item.textContent).join("\n");
-        if (!text) {
-            addFeed("Feed is empty", "error");
-            return;
+    el.apiKey.addEventListener("input", saveInputs);
+    el.userId.addEventListener("input", saveInputs);
+
+    window.addEventListener("beforeunload", () => {
+        if (state.refreshTimer) {
+            clearInterval(state.refreshTimer);
         }
-        try {
-            await navigator.clipboard.writeText(text);
-            addFeed("Feed copied to clipboard", "success");
-        } catch (error) {
-            addFeed("Clipboard copy failed", "error");
+        if (state.stompClient && state.stompClient.active) {
+            state.stompClient.deactivate();
         }
     });
 
-    document.querySelectorAll("[data-scenario]").forEach((button) => {
-        button.addEventListener("click", () => applyScenario(button.getAttribute("data-scenario")));
-    });
+    async function init() {
+        restoreInputs();
+        await syncSessionState();
+        setSocketChip(false);
+        setStatus("Ready. Start a session, connect socket, then publish.");
+        addFeed("OBSERVATORY_CORE initialized", "info");
+        await refreshAll(false);
 
-    elements.apiKey.addEventListener("input", saveSessionInputs);
-    elements.userId.addEventListener("input", saveSessionInputs);
+        state.refreshTimer = setInterval(() => {
+            refreshAll(false);
+        }, 8000);
+    }
 
-    hydrateSessionInputs();
-    syncSessionState();
-    setSocketState(false);
-    addTimeline("Console loaded");
-    addFeed("Console ready. Start by connecting WebSocket.", "info");
+    init();
 </script>
 </body>
 </html>

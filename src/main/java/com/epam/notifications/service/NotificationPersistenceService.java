@@ -2,6 +2,8 @@ package com.epam.notifications.service;
 
 import com.epam.notifications.domain.NotificationMessage;
 import com.epam.notifications.domain.NotificationRequest;
+import com.epam.notifications.domain.NotificationEventView;
+import com.epam.notifications.domain.NotificationOverviewResponse;
 import com.epam.notifications.persistence.NotificationDeliveryStatus;
 import com.epam.notifications.persistence.NotificationEntity;
 import com.epam.notifications.persistence.NotificationRepository;
@@ -12,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -57,12 +60,29 @@ public class NotificationPersistenceService {
     }
 
     @Transactional
-    public void markDelivered(String notificationId) {
+    public boolean markDelivered(String notificationId) {
         if (notificationId == null || notificationId.isBlank()) {
-            return;
+            return false;
         }
         Instant now = Instant.now();
-        notificationRepository.updateDelivered(notificationId, NotificationDeliveryStatus.DELIVERED, now, now);
+        int updated = notificationRepository.updateDelivered(
+                notificationId,
+                NotificationDeliveryStatus.DELIVERED,
+                List.of(NotificationDeliveryStatus.ENQUEUED, NotificationDeliveryStatus.RETRY_SCHEDULED),
+                now,
+                now
+        );
+        return updated > 0;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isTerminalStatus(String notificationId) {
+        if (notificationId == null || notificationId.isBlank()) {
+            return false;
+        }
+        return notificationRepository.findStatusByNotificationId(notificationId)
+                .map(status -> status == NotificationDeliveryStatus.DELIVERED || status == NotificationDeliveryStatus.DEAD_LETTER)
+                .orElse(false);
     }
 
     @Transactional
@@ -122,6 +142,76 @@ public class NotificationPersistenceService {
     @Transactional(readOnly = true)
     public long deadLetterCount() {
         return notificationRepository.countByStatus(NotificationDeliveryStatus.DEAD_LETTER);
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificationEventView> recentEvents(int limit) {
+        int boundedLimit = sanitizeLimit(limit);
+        return notificationRepository.findByOrderByCreatedAtDesc(PageRequest.of(0, boundedLimit))
+                .stream()
+                .map(this::toEventView)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificationEventView> recentFailures(int limit) {
+        int boundedLimit = sanitizeLimit(limit);
+        return notificationRepository.findByStatusInOrderByUpdatedAtDesc(
+                        List.of(NotificationDeliveryStatus.RETRY_SCHEDULED, NotificationDeliveryStatus.DEAD_LETTER),
+                        PageRequest.of(0, boundedLimit)
+                )
+                .stream()
+                .map(this::toEventView)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationOverviewResponse overview() {
+        long enqueued = notificationRepository.countByStatus(NotificationDeliveryStatus.ENQUEUED);
+        long retryScheduled = notificationRepository.countByStatus(NotificationDeliveryStatus.RETRY_SCHEDULED);
+        long delivered = notificationRepository.countByStatus(NotificationDeliveryStatus.DELIVERED);
+        long deadLetter = notificationRepository.countByStatus(NotificationDeliveryStatus.DEAD_LETTER);
+        long total = enqueued + retryScheduled + delivered + deadLetter;
+
+        double successRate = total == 0 ? 0.0 : (delivered * 100.0) / total;
+        double failureRate = total == 0 ? 0.0 : (deadLetter * 100.0) / total;
+
+        Instant from = Instant.now().minus(Duration.ofMinutes(5));
+        long recentEvents = notificationRepository.countByCreatedAtAfter(from);
+        double throughputPerSecond = recentEvents / 300.0;
+
+        return new NotificationOverviewResponse(
+                total,
+                enqueued,
+                retryScheduled,
+                delivered,
+                deadLetter,
+                successRate,
+                failureRate,
+                throughputPerSecond
+        );
+    }
+
+    private NotificationEventView toEventView(NotificationEntity entity) {
+        return new NotificationEventView(
+                entity.getNotificationId(),
+                entity.getUserId(),
+                entity.getType(),
+                entity.getMessage(),
+                entity.getStatus(),
+                entity.getAttempts(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getDeliveredAt(),
+                entity.getFailedReason()
+        );
+    }
+
+    private int sanitizeLimit(int limit) {
+        if (limit < 1) {
+            return 1;
+        }
+        return Math.min(limit, 200);
     }
 
     private String normalizeIdempotencyKey(String key) {

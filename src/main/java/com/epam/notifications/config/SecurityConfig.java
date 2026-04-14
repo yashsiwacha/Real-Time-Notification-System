@@ -44,7 +44,7 @@ public class SecurityConfig {
             .logout(AbstractHttpConfigurer::disable)
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
-                    "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data:"
+                    "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' ws: wss:; img-src 'self' data: https:"
                 ))
                 .referrerPolicy(referrer -> referrer.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
                 .frameOptions(frame -> frame.sameOrigin())
@@ -60,6 +60,9 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/notifications").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/api/notifications/system-stats").hasAnyRole("ADMIN", "USER")
+                    .requestMatchers(HttpMethod.GET, "/api/notifications/overview").hasAnyRole("ADMIN", "USER")
+                    .requestMatchers(HttpMethod.GET, "/api/notifications/recent-events").hasAnyRole("ADMIN", "USER")
+                    .requestMatchers(HttpMethod.GET, "/api/notifications/failures").hasAnyRole("ADMIN", "USER")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

@@ -17,6 +17,10 @@ public class NotificationPipelineMetrics {
     private final Counter deliveredCounter;
     private final Counter deadLetterCounter;
     private final Counter retryCounter;
+    private final Counter deliveryFailureCounter;
+    private final Counter duplicateSkipCounter;
+    private final Counter circuitOpenCounter;
+    private final Counter backpressureRejectedCounter;
     private final Timer deliveryLatency;
 
     public NotificationPipelineMetrics(MeterRegistry meterRegistry) {
@@ -31,6 +35,22 @@ public class NotificationPipelineMetrics {
         this.retryCounter = Counter.builder("notification_retry_total")
                 .description("Total delivery retry attempts")
                 .register(meterRegistry);
+
+        this.deliveryFailureCounter = Counter.builder("notification_delivery_failed_total")
+            .description("Total failed delivery attempts before retry or dead-letter")
+            .register(meterRegistry);
+
+        this.duplicateSkipCounter = Counter.builder("notification_duplicate_skipped_total")
+            .description("Total duplicate events skipped by idempotency guard")
+            .register(meterRegistry);
+
+        this.circuitOpenCounter = Counter.builder("notification_circuit_open_total")
+            .description("Total events deferred due to open delivery circuit")
+            .register(meterRegistry);
+
+        this.backpressureRejectedCounter = Counter.builder("notification_backpressure_rejected_total")
+            .description("Total API requests rejected by backpressure control")
+            .register(meterRegistry);
 
         this.deliveryLatency = Timer.builder("notification_delivery_latency")
                 .description("End-to-end notification delivery latency")
@@ -61,6 +81,22 @@ public class NotificationPipelineMetrics {
 
     public void onRetryAttempt() {
         retryCounter.increment();
+    }
+
+    public void onDeliveryFailed() {
+        deliveryFailureCounter.increment();
+    }
+
+    public void onDuplicateSkipped() {
+        duplicateSkipCounter.increment();
+    }
+
+    public void onCircuitOpen() {
+        circuitOpenCounter.increment();
+    }
+
+    public void onBackpressureRejected() {
+        backpressureRejectedCounter.increment();
     }
 
     public int pendingApprox() {

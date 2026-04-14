@@ -4,7 +4,10 @@ import com.epam.notifications.domain.NotificationMessage;
 import com.epam.notifications.domain.NotificationRequest;
 import com.epam.notifications.domain.NotificationStatusResponse;
 import com.epam.notifications.domain.QueuedNotification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +19,7 @@ import java.util.UUID;
 public class NotificationProducerService {
 
     public static final String TOPIC_CREATED = "notifications.created";
+    private static final Logger log = LoggerFactory.getLogger(NotificationProducerService.class);
 
     private final NotificationPersistenceService notificationPersistenceService;
     private final NotificationQueueService notificationQueueService;
@@ -62,11 +66,40 @@ public class NotificationProducerService {
                 idempotencyKey,
                 request.metadata()
         );
-        notificationPersistenceService.createEnqueued(notificationId, normalizedRequest);
+
+        try {
+            notificationPersistenceService.createEnqueued(notificationId, normalizedRequest);
+        } catch (DataIntegrityViolationException exception) {
+            if (idempotencyKey != null) {
+                var existingAfterRace = notificationPersistenceService.findExistingIdByIdempotency(request.userId(), idempotencyKey);
+                if (existingAfterRace.isPresent()) {
+                    log.info("Duplicate notification suppressed by idempotency race userId={} idempotencyKey={}", request.userId(), idempotencyKey);
+                    return new NotificationStatusResponse(existingAfterRace.get(), true, "ALREADY_ACCEPTED");
+                }
+            }
+            throw exception;
+        }
+
         notificationPipelineMetrics.onEnqueued();
 
         if (kafkaEnabled) {
-            kafkaTemplate.send(kafkaTopic, message.userId(), message);
+            kafkaTemplate.send(kafkaTopic, message.userId(), message)
+                    .whenComplete((result, exception) -> {
+                        if (exception == null) {
+                            return;
+                        }
+
+                        String failureReason = trimFailureReason("Kafka publish failed: " + exception.getMessage());
+                        log.error("Kafka publish failed for notificationId={} userId={} topic={} reason={}",
+                                message.notificationId(),
+                                message.userId(),
+                                kafkaTopic,
+                                failureReason,
+                                exception);
+
+                        notificationPersistenceService.markDeadLetter(message.notificationId(), 0, failureReason);
+                        notificationPipelineMetrics.onDeadLetter();
+                    });
         } else {
             notificationQueueService.enqueue(QueuedNotification.fresh(message));
         }
@@ -78,5 +111,12 @@ public class NotificationProducerService {
             return null;
         }
         return idempotencyKey.trim();
+    }
+
+    private String trimFailureReason(String reason) {
+        if (reason == null) {
+            return "unknown";
+        }
+        return reason.length() <= 500 ? reason : reason.substring(0, 500);
     }
 }

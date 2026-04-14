@@ -1,14 +1,20 @@
 package com.epam.notifications.infra;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Component
 public class TokenBucketRateLimiter {
+
+  private static final Logger log = LoggerFactory.getLogger(TokenBucketRateLimiter.class);
 
     private static final String TOKEN_BUCKET_SCRIPT = """
             local key = KEYS[1]
@@ -51,6 +57,7 @@ public class TokenBucketRateLimiter {
     private final double refillPerSecond;
     private final DefaultRedisScript<List> rateLimiterScript;
     private final String rateLimitPrefix;
+    private final ConcurrentMap<String, LocalBucket> localBuckets = new ConcurrentHashMap<>();
 
     public TokenBucketRateLimiter(StringRedisTemplate redisTemplate,
             @Value("${notification.rate-limit.capacity:10}") double capacity,
@@ -67,23 +74,47 @@ public class TokenBucketRateLimiter {
     }
 
     public Decision consume(String key, double cost) {
-        long nowMs = System.currentTimeMillis();
+      long nowMs = System.currentTimeMillis();
+      try {
         List<?> result = redisTemplate.execute(
-                rateLimiterScript,
-                List.of(rateLimitPrefix + key),
-                String.valueOf(nowMs),
-                String.valueOf(capacity),
-                String.valueOf(refillPerSecond),
-                String.valueOf(cost)
+            rateLimiterScript,
+            List.of(rateLimitPrefix + key),
+            String.valueOf(nowMs),
+            String.valueOf(capacity),
+            String.valueOf(refillPerSecond),
+            String.valueOf(cost)
         );
 
         if (result == null || result.size() < 2) {
-            return new Decision(false, 1);
+          return new Decision(false, 1);
         }
 
         boolean allowed = toLong(result.get(0)) == 1;
         long retryAfter = Math.max(0, toLong(result.get(1)));
         return new Decision(allowed, retryAfter);
+      } catch (RuntimeException exception) {
+        log.warn("Redis unavailable for rate limiting, using local fallback: {}", exception.getMessage());
+        return consumeLocally(key, nowMs, cost);
+      }
+    }
+
+    private Decision consumeLocally(String key, long nowMs, double cost) {
+      String localKey = rateLimitPrefix + key;
+      LocalBucket bucket = localBuckets.computeIfAbsent(localKey, ignored -> new LocalBucket(capacity, nowMs));
+      synchronized (bucket) {
+        double elapsedSeconds = (nowMs - bucket.lastRefillAtMs) / 1000.0;
+        bucket.tokens = Math.min(capacity, bucket.tokens + (elapsedSeconds * refillPerSecond));
+        bucket.lastRefillAtMs = nowMs;
+
+        if (bucket.tokens >= cost) {
+          bucket.tokens -= cost;
+          return new Decision(true, 0);
+        }
+
+        double deficit = cost - bucket.tokens;
+        long retryAfter = (long) Math.ceil(deficit / refillPerSecond);
+        return new Decision(false, Math.max(1, retryAfter));
+      }
     }
 
     private long toLong(Object value) {
@@ -94,5 +125,15 @@ public class TokenBucketRateLimiter {
     }
 
     public record Decision(boolean allowed, long retryAfterSeconds) {
+    }
+
+    private static final class LocalBucket {
+      private double tokens;
+      private long lastRefillAtMs;
+
+      private LocalBucket(double tokens, long lastRefillAtMs) {
+        this.tokens = tokens;
+        this.lastRefillAtMs = lastRefillAtMs;
+      }
     }
 }

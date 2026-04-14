@@ -35,14 +35,18 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      acks: 1
+      acks: all
+      retries: ${KAFKA_PRODUCER_RETRIES:20}
       properties:
         linger.ms: 10
         batch.size: 65536
         compression.type: lz4
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      enable-auto-commit: false
       properties:
         spring.json.trusted.packages: "com.epam.notifications.domain"
         spring.json.value.default.type: "com.epam.notifications.domain.NotificationMessage"
@@ -52,6 +56,9 @@ notification:
     enabled: ${KAFKA_ENABLED:false}
     topic: ${KAFKA_TOPIC:notifications.created}
     group-id: ${KAFKA_GROUP_ID:notification-dispatcher}
+    partitions: ${KAFKA_TOPIC_PARTITIONS:6}
+    replicas: ${KAFKA_TOPIC_REPLICAS:1}
+    consumer-concurrency: ${KAFKA_CONSUMER_CONCURRENCY:6}
     delivery-attempts: ${KAFKA_DELIVERY_ATTEMPTS:3}
     retry-delay-ms: ${KAFKA_RETRY_DELAY_MS:1000}
     retry-multiplier: ${KAFKA_RETRY_MULTIPLIER:2.0}
@@ -60,6 +67,11 @@ notification:
     poll-size: 200
     max-attempts: 8
     base-backoff-ms: 300
+    circuit-breaker:
+      failure-threshold: ${DISPATCHER_CB_FAILURE_THRESHOLD:40}
+      open-duration-ms: ${DISPATCHER_CB_OPEN_DURATION_MS:15000}
+  backpressure:
+    max-pending: ${BACKPRESSURE_MAX_PENDING:100000}
   rate-limit:
     capacity: ${RATE_LIMIT_CAPACITY:5000}
     refill-per-second: ${RATE_LIMIT_REFILL_PER_SECOND:5000}
