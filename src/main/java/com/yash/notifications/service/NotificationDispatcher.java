@@ -1,6 +1,5 @@
-package com.epam.notifications.service;
+package com.yash.notifications.service;
 
-import com.epam.notifications.domain.NotificationMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +13,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+
+import com.yash.notifications.domain.NotificationMessage;
 
 import java.time.Instant;
 
