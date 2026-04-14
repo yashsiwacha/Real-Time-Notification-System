@@ -131,7 +131,7 @@ public class NotificationQueueService {
                 return 0;
             }
             return Integer.parseInt(count);
-        } catch (RuntimeException | NumberFormatException exception) {
+        } catch (RuntimeException exception) {
             return fallbackDeadLetterCount.get();
         }
     }
