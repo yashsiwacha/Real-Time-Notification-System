@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -23,6 +24,7 @@ public class NotificationProducerService {
 
     private final NotificationPersistenceService notificationPersistenceService;
     private final NotificationQueueService notificationQueueService;
+    @Nullable
     private final KafkaTemplate<String, NotificationMessage> kafkaTemplate;
     private final NotificationPipelineMetrics notificationPipelineMetrics;
     private final boolean kafkaEnabled;
@@ -30,7 +32,7 @@ public class NotificationProducerService {
 
     public NotificationProducerService(NotificationPersistenceService notificationPersistenceService,
                                        NotificationQueueService notificationQueueService,
-                                       KafkaTemplate<String, NotificationMessage> kafkaTemplate,
+                                       @Nullable KafkaTemplate<String, NotificationMessage> kafkaTemplate,
                                        NotificationPipelineMetrics notificationPipelineMetrics,
                                        @Value("${notification.kafka.enabled:false}") boolean kafkaEnabled,
                                        @Value("${notification.kafka.topic:notifications.created}") String kafkaTopic) {
@@ -82,7 +84,7 @@ public class NotificationProducerService {
 
         notificationPipelineMetrics.onEnqueued();
 
-        if (kafkaEnabled) {
+        if (kafkaEnabled && kafkaTemplate != null) {
             kafkaTemplate.send(kafkaTopic, message.userId(), message)
                     .whenComplete((result, exception) -> {
                         if (exception == null) {
@@ -101,6 +103,9 @@ public class NotificationProducerService {
                         notificationPipelineMetrics.onDeadLetter();
                     });
         } else {
+            if (kafkaEnabled) {
+                log.warn("Kafka is enabled but KafkaTemplate is unavailable; falling back to Redis queue for notificationId={}", message.notificationId());
+            }
             notificationQueueService.enqueue(QueuedNotification.fresh(message));
         }
         return new NotificationStatusResponse(notificationId, false, "ENQUEUED");

@@ -6,12 +6,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
 
 import com.yash.notifications.domain.NotificationMessage;
@@ -53,10 +53,10 @@ public class NotificationDispatcher {
             autoCreateTopics = "true",
             dltTopicSuffix = "-dlt",
             topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
-            backoff = @Backoff(
-                    delayExpression = "${notification.kafka.retry-delay-ms:500}",
-                    multiplierExpression = "${notification.kafka.retry-multiplier:2.0}",
-                    maxDelayExpression = "${notification.kafka.retry-max-delay-ms:30000}"
+                backOff = @BackOff(
+                    delayString = "${notification.kafka.retry-delay-ms:500}",
+                    multiplierString = "${notification.kafka.retry-multiplier:2.0}",
+                    maxDelayString = "${notification.kafka.retry-max-delay-ms:30000}"
             )
     )
     @KafkaListener(

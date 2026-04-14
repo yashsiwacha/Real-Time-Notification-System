@@ -84,6 +84,9 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  health:
+    redis:
+      enabled: ${REDIS_HEALTH_ENABLED:false}
   metrics:
     tags:
       application: notification-system
